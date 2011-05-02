@@ -114,6 +114,9 @@ emph = Inlines . singleton . Emph
 link :: Inlines -> Text -> Text -> Inlines
 link lab tit src = Inlines $ singleton $ Link (Label lab) (Title tit) (Source src)
 
+sp :: Inlines
+sp = Inlines . singleton $ Sp
+
 -- just testing generics:
 
 bottomUp f = everywhere (mkT f)
@@ -124,6 +127,13 @@ gentest x = x
 
 gentest2 :: Title -> Title
 gentest2 (Title x) = (Title "")
+
+
+-- awkward: still hard to remove an item from a list and replace it with
+-- several
+gentest3 :: Inlines -> Inlines
+gentest3 (Inlines x) | Data.Sequence.take 1 x == fromList [Txt "hi"] = txt "H I I" <> Inlines (Data.Sequence.drop 1 x)
+gentest3 x = x
 
 --
 
