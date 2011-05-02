@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, MultiParamTypeClasses #-}
 
 import Data.Sequence hiding (null)
 import Data.Monoid
@@ -8,6 +8,8 @@ import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
 import Data.Generics
+import Text.Parsec
+import Control.Monad.Identity (Identity)
 
 data Inline = Txt Text
             | Sp
@@ -134,4 +136,19 @@ gentest3 :: Seq Inline -> Seq Inline
 gentest3 x | Data.Sequence.take 1 x == fromList [Txt "hi"] = Txt "H" <| Sp <| Txt "I" <| Data.Sequence.drop 1 x
 gentest3 x = x
 
---
+-----
+
+data PState = PState
+
+type P a = ParsecT Text PState IO a
+
+instance Stream Text IO Char where
+  uncons = return . T.uncons
+
+parseWith :: P a -> Text -> IO a
+parseWith p t = do
+  res <- runParserT p PState "input" t
+  case res of 
+       Left err -> error $ show err
+       Right x  -> return x
+
