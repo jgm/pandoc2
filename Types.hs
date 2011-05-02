@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings, MultiParamTypeClasses #-}
-
+module Types
+where
 import Data.Sequence hiding (null)
 import Data.Monoid
 import qualified Data.Text as T
@@ -91,55 +92,4 @@ instance Show Blocks where
 
 instance Read Blocks where
   readsPrec n = map (\(x,y) -> (Blocks . fromList $ x, y)) . readsPrec n
-
--- | Convert a 'Text' to 'Inlines', treating interword spaces as 'Sp's.
--- If you want a 'Str' with literal spaces, use 'literalText'.
-txt :: T.Text -> Inlines
-txt = Inlines . fromList . intersperse Sp . map Txt . T.words
-
-literalText :: Text -> Inlines
-literalText = Inlines . singleton . Txt
-
-emph :: Inlines -> Inlines
-emph = Inlines . singleton . Emph
-
-link :: Inlines -> Text -> Text -> Inlines
-link lab tit src = Inlines $ singleton $ Link (Label lab) (Title tit) (Source src)
-
-sp :: Inlines
-sp = Inlines . singleton $ Sp
-
--- just testing generics:
-
-bottomUp f = everywhere (mkT f)
-
-gentest :: Inline -> Inline
-gentest (Txt t) = Txt $ T.toUpper t
-gentest x = x
-
-gentest2 :: Title -> Title
-gentest2 (Title x) = (Title "")
-
-
--- awkward: still hard to remove an item from a list and replace it with
--- several
-gentest3 :: Seq Inline -> Seq Inline
-gentest3 x | Data.Sequence.take 1 x == fromList [Txt "hi"] = Txt "H" <| Sp <| Txt "I" <| Data.Sequence.drop 1 x
-gentest3 x = x
-
------
-
-data PState = PState
-
-type P a = ParsecT Text PState IO a
-
-instance Stream Text IO Char where
-  uncons = return . T.uncons
-
-parseWith :: P a -> Text -> IO a
-parseWith p t = do
-  res <- runParserT p PState "input" t
-  case res of 
-       Left err -> error $ show err
-       Right x  -> return x
 
