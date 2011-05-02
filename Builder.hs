@@ -14,20 +14,23 @@ import Data.Generics
 import Text.Parsec
 import Control.Monad.Identity (Identity)
 
+inline :: Inline -> Inlines
+inline = Inlines . singleton
+
 -- | Convert a 'Text' to 'Inlines', treating interword spaces as 'Sp's.
--- If you want a 'Str' with literal spaces, use 'literalText'.
+-- If you want a 'Str' with literal spaces, use 'literal'.
 txt :: T.Text -> Inlines
 txt = Inlines . fromList . intersperse Sp . map Txt . T.words
 
-literalText :: Text -> Inlines
-literalText = Inlines . singleton . Txt
+literal :: Text -> Inlines
+literal = inline . Txt
 
 emph :: Inlines -> Inlines
-emph = Inlines . singleton . Emph
+emph = inline . Emph
 
 link :: Inlines -> Text -> Text -> Inlines
-link lab tit src = Inlines $ singleton $ Link (Label lab) (Title tit) (Source src)
+link lab tit src = inline $ Link (Label lab) (Title tit) (Source src)
 
 sp :: Inlines
-sp = Inlines . singleton $ Sp
+sp = inline Sp
 
