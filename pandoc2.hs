@@ -11,21 +11,24 @@ import Data.Generics
 import Text.Parsec
 import Control.Monad.Identity (Identity)
 
+data Block = Para Inlines
+           | Plain Inlines
+           | Quote Blocks
+           | Code Attr Text
+           | OrderedList [Blocks]
+           | BulletList [Blocks]
+           | RawBlock Format Text
+           deriving (Show, Read, Data, Ord, Eq, Typeable)
+
 data Inline = Txt Text
             | Sp
             | Emph Inlines
             | Strong Inlines
-            | SmallCaps Inlines
-            | Underline Inlines
-            | Strike Inlines
-            | Superscript Inlines
-            | Subscript Inlines
             | Image Label Title Source
             | Link Label Title Source
             | Verbatim Attr Text
             | LineBreak
             | RawInline Format Text
-            | Note
             deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 newtype Label = Label Inlines
@@ -76,15 +79,6 @@ instance Monoid Inlines where
                           (Txt t1, Txt t2)   -> xs' |> Txt (t1 <> t2)
                           (Emph i1, Emph i2) -> xs' |> Emph (i1 <> i2)
                           (Strong i1, Strong i2) -> xs' |> Strong (i1 <> i2)
-                          (SmallCaps i1, SmallCaps i2) ->
-                                                xs' |> SmallCaps (i1 <> i2)
-                          (Underline i1, Underline i2) ->
-                                                xs' |> Underline (i1 <> i2)
-                          (Strike i1, Strike i2) -> xs' |> Strike (i1 <> i2)
-                          (Superscript i1, Superscript i2) ->
-                                                xs' |> Superscript (i1 <> i2)
-                          (Subscript i1, Subscript i2) ->
-                                                xs' |> Subscript (i1 <> i2)
                           (Sp, LineBreak)    -> xs' |> LineBreak
                           _                  -> xs' |> x |> y
 
@@ -97,9 +91,6 @@ instance Show Blocks where
 
 instance Read Blocks where
   readsPrec n = map (\(x,y) -> (Blocks . fromList $ x, y)) . readsPrec n
-
-data Block = Para Inlines
-           deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 -- | Convert a 'Text' to 'Inlines', treating interword spaces as 'Sp's.
 -- If you want a 'Str' with literal spaces, use 'literalText'.
