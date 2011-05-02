@@ -2,13 +2,12 @@
 
 import Data.Sequence hiding (null)
 import Data.Monoid
-import Data.Generics.Uniplate.Direct
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
-import Data.Generics.Uniplate.Data
+import Data.Generics
 
 data Inline = Txt Text
             | Sp
@@ -119,14 +118,7 @@ sp = Inlines . singleton $ Sp
 
 -- just testing generics:
 
-bottomUp :: Biplate from to => (to -> to) -> from -> from
-bottomUp = transformBi
-
-bottomUpM :: (Monad m, Biplate from to) => (to -> m to) -> from -> m from
-bottomUpM = transformBiM
-
--- or use transform, transformBi, transformM, transformBiM,
--- rewriteBi, rewriteBiM from uniplate
+bottomUp f = everywhere (mkT f)
 
 gentest :: Inline -> Inline
 gentest (Txt t) = Txt $ T.toUpper t
@@ -143,5 +135,3 @@ gentest3 x | Data.Sequence.take 1 x == fromList [Txt "hi"] = Txt "H" <| Sp <| Tx
 gentest3 x = x
 
 --
-
-
