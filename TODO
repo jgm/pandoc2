@@ -1,0 +1,16 @@
+- pandoc2
+
+* Types:
+  use Text
+  use Uniplate instead of syb
+  use Seqs (like Builder) instead of lists
+  define monoid instance for these so that noramlization is guaranteed
+  arbitrary containers
+  hierarchical sections
+
+* HTML writer:
+  use blaze-html
+
+* Markdown reader:
+  use parsec3 with Text stream
+
