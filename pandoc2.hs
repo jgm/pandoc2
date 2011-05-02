@@ -9,6 +9,7 @@ import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList, foldMap)
 import qualified Text.ParserCombinators.ReadP as R
+import Data.Generics
 
 newtype Inlines = Inlines { unInlines :: Seq Inline }
                 deriving (Data, Ord, Eq, Typeable)
@@ -33,6 +34,9 @@ instance Monoid Inlines where
                           (Emph i1, Emph i2) -> xs' |> Emph (i1 `mappend` i2)
                           _                  -> xs' |> x |> y
 
+(<>) :: Monoid a => a -> a -> a
+(<>) = mappend
+
 newtype Blocks = Blocks { unBlocks :: Seq Block }
                 deriving (Data, Ord, Eq, Typeable)
 
@@ -53,12 +57,23 @@ data Block = Para Inlines
 
 -- | Convert a 'Text' to 'Inlines', treating interword spaces as 'Sp's.
 -- If you want a 'Str' with literal spaces, use 'literalText'.
-text :: T.Text -> Inlines
-text = Inlines . fromList . intersperse Sp . map Txt . T.words
+txt :: T.Text -> Inlines
+txt = Inlines . fromList . intersperse Sp . map Txt . T.words
 
 literalText :: Text -> Inlines
 literalText = Inlines . singleton . Txt
 
 emph :: Inlines -> Inlines
 emph = Inlines . singleton . Emph
+
+-- just testing generics:
+
+bottomUp f = everywhere (mkT f)
+
+gentest :: Inline -> Inline
+gentest (Txt t) = Txt $ T.toUpper t
+gentest x = x
+
+--
+
 
