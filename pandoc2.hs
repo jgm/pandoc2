@@ -8,7 +8,7 @@ import Data.Text (Text)
 import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
-import Data.Generics
+import Data.Generics.Uniplate.Data
 
 data Inline = Txt Text
             | Sp
@@ -119,7 +119,14 @@ sp = Inlines . singleton $ Sp
 
 -- just testing generics:
 
-bottomUp f = everywhere (mkT f)
+bottomUp :: Biplate from to => (to -> to) -> from -> from
+bottomUp = transformBi
+
+bottomUpM :: (Monad m, Biplate from to) => (to -> m to) -> from -> m from
+bottomUpM = transformBiM
+
+-- or use transform, transformBi, transformM, transformBiM,
+-- rewriteBi, rewriteBiM from uniplate
 
 gentest :: Inline -> Inline
 gentest (Txt t) = Txt $ T.toUpper t
@@ -131,8 +138,8 @@ gentest2 (Title x) = (Title "")
 
 -- awkward: still hard to remove an item from a list and replace it with
 -- several
-gentest3 :: Inlines -> Inlines
-gentest3 (Inlines x) | Data.Sequence.take 1 x == fromList [Txt "hi"] = txt "H I I" <> Inlines (Data.Sequence.drop 1 x)
+gentest3 :: Seq Inline -> Seq Inline
+gentest3 x | Data.Sequence.take 1 x == fromList [Txt "hi"] = Txt "H" <| Sp <| Txt "I" <| Data.Sequence.drop 1 x
 gentest3 x = x
 
 --
