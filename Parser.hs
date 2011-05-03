@@ -58,8 +58,8 @@ instance Stream Text IO Char where
 data LogLevel = DEBUG | INFO | WARNING | ERROR
               deriving (Ord, Eq, Show, Read)
 
-pushEndline :: P () -> P ()
-pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
+pushEndline :: P a -> P ()
+pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> (p *> return ()) }
 
 popEndline :: P ()
 popEndline = do
@@ -78,8 +78,15 @@ popBlockSep = do
         EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
         ps :> _ -> setState st{ sBlockSep = ps }
 
-endline :: P Inlines
-endline = sp <$ try (newline *> getState >>= sequenceA . sEndline)
+pEndline :: P Inlines
+pEndline =
+  sp <$ try (newline *> (getState >>= sequenceA . sEndline) *> notFollowedBy spnl)
+
+spnl :: P Char
+spnl = try $ skipMany spaceChar *> newline
+
+spaceChar :: P Char
+spaceChar = satisfy (\c -> c == ' ' || c == '\t')
 
 showText :: Show a => a -> Text
 showText = T.pack . show
@@ -109,13 +116,13 @@ parseWith p t = do
                    return x
 
 pInline :: P Inlines
-pInline = choice [ pSp, pTxt ]
+pInline = choice [ pSp, pTxt, pEndline ]
 
 pInlines :: P Inlines
 pInlines = mconcat <$> many1 pInline
 
 pSp :: P Inlines
-pSp = many1 space *> return sp
+pSp = many1 spaceChar *> return sp
 
 pTxt :: P Inlines
 pTxt = literal . T.pack <$> many1 letter
