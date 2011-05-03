@@ -11,7 +11,7 @@ import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
 import Data.Generics
-import Text.Parsec
+import Text.Parsec hiding ((<|>))
 import Control.Monad.Identity (Identity)
 import Control.Monad
 import System.FilePath
@@ -122,7 +122,11 @@ pInlines :: P Inlines
 pInlines = mconcat <$> many1 pInline
 
 pSp :: P Inlines
-pSp = many1 spaceChar *> return sp
+pSp = do
+  sps <- many1 spaceChar
+  (pEndline *> if Prelude.length sps < 2 then return sp else return lineBreak)
+    <|> (notFollowedBy newline *> return sp)
+    <|> return mempty
 
 pTxt :: P Inlines
 pTxt = literal . T.pack <$> many1 letter
