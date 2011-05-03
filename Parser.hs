@@ -31,6 +31,8 @@ import Control.Applicative
  - use Data.Traversable.sequence to run all the parsers
  -
  - when we hit a new list item or exit the quote, pop stuff off of these.
+
+ - References:  use generics to extract, instead of doing two passes?
 -}
 
 
@@ -121,6 +123,8 @@ pInline = choice [ pSp, pTxt, pEndline ]
 pInlines :: P Inlines
 pInlines = mconcat <$> many1 pInline
 
+
+-- TODO rewrite wo the length calculation
 pSp :: P Inlines
 pSp = do
   sps <- many1 spaceChar
