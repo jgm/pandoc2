@@ -4,6 +4,7 @@ where
 import Definition
 import Data.Sequence as Seq
 import Data.Monoid
+import Data.Traversable
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Data
@@ -49,6 +50,14 @@ pstate = PState { sGetFile  = undefined
                 , sBlockSep = Seq.empty
                 }
 
+type P a = ParsecT Text PState IO a
+
+instance Stream Text IO Char where
+  uncons = return . T.uncons
+
+data LogLevel = DEBUG | INFO | WARNING | ERROR
+              deriving (Ord, Eq, Show, Read)
+
 pushEndline :: P () -> P ()
 pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
 
@@ -59,13 +68,18 @@ popEndline = do
         EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
         ps :> _ -> setState st{ sEndline = ps }
 
-type P a = ParsecT Text PState IO a
+pushBlockSep :: P () -> P ()
+pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
 
-instance Stream Text IO Char where
-  uncons = return . T.uncons
+popBlockSep :: P ()
+popBlockSep = do
+  st <- getState
+  case viewr (sBlockSep st) of
+        EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
+        ps :> _ -> setState st{ sBlockSep = ps }
 
-data LogLevel = DEBUG | INFO | WARNING | ERROR
-              deriving (Ord, Eq, Show, Read)
+endline :: P Inlines
+endline = sp <$ try (newline *> getState >>= sequenceA . sEndline)
 
 showText :: Show a => a -> Text
 showText = T.pack . show
