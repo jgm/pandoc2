@@ -18,17 +18,46 @@ import System.IO (stderr)
 import qualified Data.Text.IO as T
 import Control.Applicative
 
+{-
+ - Processing model:
+ - sEndline - Seq of parsers;
+ -    when we hit a Quote block, add "optional > "
+ -    when we hit a list item, add "optional (spaces notfollowedby listmarker)"
+ -    parse in sequence, then return Sp
+ - sBlockSep - optional blanklines (dep. on tight/loose) >> Seq of parsers;
+ -    when we hit a Quote block, add "> "
+ -    when we hit a list item, add "indentspace or blankline"
+ - use Data.Traversable.sequence to run all the parsers
+ -
+ - when we hit a new list item or exit the quote, pop stuff off of these.
+-}
+
+
 data PState = PState {
-                  sGetFile  :: FilePath -> P Text
-                , sMessages :: Seq Text
-                , sLogLevel :: LogLevel
+                  sGetFile    :: FilePath -> P Text
+                , sMessages   :: Seq Text
+                , sLogLevel   :: LogLevel
+                , sEndline    :: Seq (P ())
+                , sBlockSep   :: Seq (P ())
                 }
 
 pstate :: PState
 pstate = PState { sGetFile  = undefined
                 , sMessages = Seq.empty
                 , sLogLevel = WARNING
+                , sEndline  = Seq.empty
+                , sBlockSep = Seq.empty
                 }
+
+pushEndline :: P () -> P ()
+pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
+
+popEndline :: P ()
+popEndline = do
+  st <- getState
+  case viewr (sEndline st) of
+        EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
+        ps :> _ -> setState st{ sEndline = ps }
 
 type P a = ParsecT Text PState IO a
 
