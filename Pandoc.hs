@@ -1,11 +1,7 @@
-module Pandoc ( module Types
-              , module Builder
-              , module Generic
+module Pandoc ( module Definition
               , module Parser )
 where
-import Types
-import Builder
-import Generic
+import Definition
 import Parser
 
 

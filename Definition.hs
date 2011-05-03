@@ -1,5 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, MultiParamTypeClasses #-}
-module Types
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings,
+   MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
+module Definition
 where
 import Data.Sequence hiding (null)
 import Data.Monoid
@@ -9,6 +10,7 @@ import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
 import Data.Generics
+import Data.String
 import Text.Parsec
 import Control.Monad.Identity (Identity)
 
@@ -55,6 +57,9 @@ data Attr = Attr { attrId      :: Text
                  , attrKeyVals :: [(Text, Text)] }
                  deriving (Show, Read, Data, Ord, Eq, Typeable)
 
+nullAttr :: Attr
+nullAttr = Attr "" [] []
+
 (<>) :: Monoid a => a -> a -> a
 (<>) = mappend
 
@@ -83,8 +88,11 @@ instance Monoid Inlines where
                           (Sp, LineBreak)    -> xs' |> LineBreak
                           _                  -> xs' |> x |> y
 
+instance IsString Inlines where
+  fromString = txt . T.pack
+
 newtype Blocks = Blocks { unBlocks :: Seq Block }
-                deriving (Data, Ord, Eq, Typeable)
+                deriving (Data, Ord, Eq, Typeable, Monoid)
 
 -- We show a Blocks just like [Block].
 instance Show Blocks where
@@ -92,4 +100,75 @@ instance Show Blocks where
 
 instance Read Blocks where
   readsPrec n = map (\(x,y) -> (Blocks . fromList $ x, y)) . readsPrec n
+
+-- Pandoc builder DSL
+
+inline :: Inline -> Inlines
+inline = Inlines . singleton
+
+-- | Convert a 'Text' to 'Inlines', treating interword spaces as 'Sp's.
+-- If you want a 'Str' with literal spaces, use 'literal'.
+txt :: T.Text -> Inlines
+txt = Inlines . fromList . intersperse Sp . map Txt . T.words
+
+literal :: Text -> Inlines
+literal = inline . Txt
+
+sp :: Inlines
+sp = inline Sp
+
+emph :: Inlines -> Inlines
+emph = inline . Emph
+
+strong :: Inlines -> Inlines
+strong = inline . Strong
+
+link :: Inlines -> Text -> Text -> Inlines
+link lab tit src = inline $ Link (Label lab) (Title tit) (Source src)
+
+image :: Inlines -> Text -> Text -> Inlines
+image lab tit src = inline $ Image (Label lab) (Title tit) (Source src)
+
+verbatim :: Text -> Inlines
+verbatim = verbatimAttr nullAttr
+
+verbatimAttr :: Attr -> Text -> Inlines
+verbatimAttr attr = inline . Verbatim attr
+
+lineBreak :: Inlines
+lineBreak = inline LineBreak
+
+rawInline :: Format -> Text -> Inlines
+rawInline f = inline . RawInline f
+
+block :: Block -> Blocks
+block = Blocks . singleton
+
+para :: Inlines -> Blocks
+para = block . Para
+
+plain :: Inlines -> Blocks
+plain = block . Plain
+
+quote :: Blocks -> Blocks
+quote = block . Quote
+
+codeAttr :: Attr -> Text -> Blocks
+codeAttr attr = block . Code attr
+
+code :: Text -> Blocks
+code = codeAttr nullAttr
+
+orderedList :: [Blocks] -> Blocks
+orderedList = block . OrderedList
+
+bulletList :: [Blocks] -> Blocks
+bulletList = block . BulletList
+
+rawBlock :: Format -> Text -> Blocks
+rawBlock f = block . RawBlock f
+
+-- Generics:
+
+bottomUp f = everywhere (mkT f)
 

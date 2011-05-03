@@ -1,9 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, OverloadedStrings, MultiParamTypeClasses,  GeneralizedNewtypeDeriving #-}
 module Parser
 where
-import Types
-import Builder
-import Generic
+import Definition
 import Data.Sequence as Seq
 import Data.Monoid
 import qualified Data.Text as T
