@@ -104,11 +104,12 @@ pNewline :: P Int
 pNewline = try $ spnl *> pBlockSep *> return 1
 
 pEndline :: P Inlines
-pEndline = sp <$
-  try (newline *> (getState >>= sequenceA . sEndline) *> notFollowedBy spnl)
+pEndline = try $
+  newline *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
+  lookAhead (satisfy (/='\n')) *> return sp
 
-spnl :: P Char
-spnl = try $ skipMany spaceChar *> newline
+spnl :: P ()
+spnl = try $ skipMany spaceChar <* newline
 
 spaceChar :: P Char
 spaceChar = satisfy (\c -> c == ' ' || c == '\t')
@@ -193,7 +194,7 @@ trimInlines = Inlines . trimr . triml . unInlines
                     _         -> ils
 
 pDoc :: P Blocks
-pDoc = pBlocks >>= resolveRefs
+pDoc = skipMany pNewline *> pBlocks <* eof >>= resolveRefs
 
 resolveRefs :: Blocks -> P Blocks
 resolveRefs bs = do
@@ -213,10 +214,10 @@ handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
         go x = singleton x
 
 pBlocks :: P Blocks
-pBlocks = mconcat <$> many pBlock
+pBlocks = mconcat <$> pBlock `sepEndBy` pNewlines
 
 pBlock :: P Blocks
-pBlock = choice [pBlank, pQuote, pCode, pList, pPara]
+pBlock = choice [pQuote, pCode, pList, pPara]
 
 pBlank :: P Blocks
 pBlank = mempty <$ pNewlines
@@ -227,7 +228,7 @@ pPara = para <$> pInlines
 pQuote :: P Blocks
 pQuote = quote <$> try (quoteStart
    *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
-    where quoteStart = char '>'
+    where quoteStart = char '>' *> optional spaceChar
 
 pList :: P Blocks
 pList = pBulletList <|> pOrderedList
@@ -256,8 +257,8 @@ listSep p = do
   return (all (== 1) ts, x:xs)
 
 pListItem :: P a -> P Blocks
-pListItem start = try $ start *> withBlockSep indentSpace
-  (withEndline (notFollowedBy $ optional indentSpace *> listStart) pBlocks)
+pListItem start = try $ start *> withBlockSep (indentSpace <|> lookAhead spnl)
+  (withEndline (notFollowedBy $ skipMany spaceChar *> listStart) pBlocks)
 
 listStart :: P Char
 listStart = bullet <|> enum
@@ -271,7 +272,6 @@ enum = try $ nonindentSpace *> (digit <|> char '#') <* char '.' <* spaceChar
 indentSpace :: P ()
 indentSpace = try $  (count 4 (char ' ') >> return ())
                  <|> (char '\t' >> return ())
-                 <|> (lookAhead spnl >> return ())
 
 nonindentSpace :: P ()
 nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
@@ -281,6 +281,10 @@ anyLine :: P Text
 anyLine = T.pack <$> many (satisfy (/='\n'))
 
 pCode :: P Blocks
-pCode  = toCodeBlock <$> sepBy1 (indentSpace *> anyLine) pNewline
-  where toCodeBlock = code . T.unlines . Prelude.reverse
-                    . dropWhile T.null . Prelude.reverse
+pCode  = try $ do
+  indentSpace
+  x <- anyLine
+  pNewline
+  xs <- sepBy ((indentSpace <|> lookAhead spnl) *> anyLine) pNewline
+  return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
+         $ Prelude.reverse (x:xs)
