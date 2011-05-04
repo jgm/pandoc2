@@ -83,8 +83,11 @@ popBlockSep = do
 pBlockSep :: P ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
+pNewlines :: P ()
+pNewlines = endBy (skipMany1 spnl) pBlockSep *> return ()
+
 pNewline :: P ()
-pNewline = try (spnl *> (pBlockSep <|> (lookAhead spnl *> return ())))
+pNewline = spnl *> pBlockSep *> return ()
 
 pEndline :: P Inlines
 pEndline = sp <$
@@ -152,7 +155,7 @@ trimr ils = case viewr ils of
                  _         -> ils
 
 pBlocks :: P Blocks
-pBlocks = mconcat <$> sepBy pBlock pNewline
+pBlocks = mconcat <$> sepBy pBlock pNewlines
 
 pBlock :: P Blocks
 pBlock = choice [pQuote, pPara]
@@ -160,14 +163,12 @@ pBlock = choice [pQuote, pPara]
 pPara :: P Blocks
 pPara = para <$> pInlines
 
-pBlankline :: P ()
-pBlankline =  eof <|> (pNewline <* (eof <|> skipMany1 pNewline))
-
 pQuote :: P Blocks
 pQuote = try $ do
   char '>'
-  pushEndline $ optional (char '>' *> skipMany spaceChar)
-  pushBlockSep (char '>' *> skipMany spaceChar)
+  skipMany spaceChar
+  pushEndline  $ optional (char '>') *> skipMany spaceChar
+  pushBlockSep $ char '>' *> skipMany spaceChar
   bs <- pBlocks
   popEndline
   popBlockSep
