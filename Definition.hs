@@ -15,11 +15,9 @@ import Text.Parsec
 import Control.Monad.Identity (Identity)
 
 data Block = Para Inlines
-           | Plain Inlines
            | Quote Blocks
            | Code Attr Text
-           | OrderedList [Blocks]
-           | BulletList [Blocks]
+           | List ListAttr [Blocks]
            | RawBlock Format Text
            deriving (Show, Read, Data, Ord, Eq, Typeable)
 
@@ -56,6 +54,13 @@ data Attr = Attr { attrId      :: Text
                  , attrClasses :: [Text]
                  , attrKeyVals :: [(Text, Text)] }
                  deriving (Show, Read, Data, Ord, Eq, Typeable)
+
+data ListAttr = ListAttr { listTight  :: Bool
+                         , listStyle  :: ListStyle }
+               deriving (Show, Read, Data, Ord, Eq, Typeable)
+
+data ListStyle = Bullet | Ordered
+               deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 nullAttr :: Attr
 nullAttr = Attr "" [] []
@@ -147,9 +152,6 @@ block = Blocks . singleton
 para :: Inlines -> Blocks
 para = block . Para
 
-plain :: Inlines -> Blocks
-plain = block . Plain
-
 quote :: Blocks -> Blocks
 quote = block . Quote
 
@@ -159,11 +161,21 @@ codeAttr attr = block . Code attr
 code :: Text -> Blocks
 code = codeAttr nullAttr
 
-orderedList :: [Blocks] -> Blocks
-orderedList = block . OrderedList
+orderedListTight :: [Blocks] -> Blocks
+orderedListTight =
+  block . List ListAttr{ listTight = True, listStyle = Ordered }
 
-bulletList :: [Blocks] -> Blocks
-bulletList = block . BulletList
+orderedListLoose :: [Blocks] -> Blocks
+orderedListLoose =
+  block . List ListAttr{ listTight = False, listStyle = Ordered }
+
+bulletListTight :: [Blocks] -> Blocks
+bulletListTight =
+  block . List ListAttr{ listTight = True, listStyle = Bullet }
+
+bulletListLoose :: [Blocks] -> Blocks
+bulletListLoose =
+  block . List ListAttr{ listTight = False, listStyle = Bullet }
 
 rawBlock :: Format -> Text -> Blocks
 rawBlock f = block . RawBlock f

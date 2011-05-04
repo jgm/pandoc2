@@ -11,7 +11,7 @@ import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
 import Data.Generics
-import Text.Parsec hiding ((<|>))
+import Text.Parsec hiding ((<|>), many, optional)
 import Control.Monad.Identity (Identity)
 import Control.Monad
 import System.FilePath
@@ -70,8 +70,8 @@ popEndline = do
         EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
         ps :> _ -> setState st{ sEndline = ps }
 
-pushBlockSep :: P () -> P ()
-pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
+pushBlockSep :: P a -> P ()
+pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> (p *> return ()) }
 
 popBlockSep :: P ()
 popBlockSep = do
@@ -84,11 +84,11 @@ pBlockSep :: P ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
 pNewline :: P ()
-pNewline = try $ spnl *> (pBlockSep <|> (lookAhead spnl *> return ()))
+pNewline = try (spnl *> (pBlockSep <|> (lookAhead spnl *> return ())))
 
 pEndline :: P Inlines
-pEndline =
-  sp <$ try (newline *> (getState >>= sequenceA . sEndline) *> notFollowedBy spnl)
+pEndline = sp <$
+  try (newline *> (getState >>= sequenceA . sEndline) *> notFollowedBy spnl)
 
 spnl :: P Char
 spnl = try $ skipMany spaceChar *> newline
@@ -127,20 +127,49 @@ pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline ]
 
 pInlines :: P Inlines
-pInlines = mconcat <$> many1 pInline
+pInlines = normalize . mconcat <$> many1 pInline
 
-
--- TODO rewrite wo the length calculation
 pSp :: P Inlines
-pSp = do
-  sps <- many1 spaceChar
-  (pEndline *> if Prelude.length sps < 2 then return sp else return lineBreak)
-    <|> (notFollowedBy newline *> return sp)
-    <|> return mempty
+pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
+                  <|> return sp)
 
 pTxt :: P Inlines
 pTxt = literal . T.pack <$> many1 letter
 
+normalize :: Inlines -> Inlines
+normalize = Inlines . trimr . triml . unInlines
+
+triml :: Seq Inline -> Seq Inline
+triml ils = case viewl ils of
+                 EmptyL    -> ils
+                 (Sp :< x) -> triml x
+                 _         -> ils
+
+trimr :: Seq Inline -> Seq Inline
+trimr ils = case viewr ils of
+                 EmptyR    -> ils
+                 (x :> Sp) -> trimr x
+                 _         -> ils
+
+pBlocks :: P Blocks
+pBlocks = mconcat <$> sepBy pBlock pNewline
+
+pBlock :: P Blocks
+pBlock = choice [pQuote, pPara]
+
 pPara :: P Blocks
-pPara = para <$> pInlines <* pNewline <* skipMany1 pNewline
+pPara = para <$> pInlines
+
+pBlankline :: P ()
+pBlankline =  eof <|> (pNewline <* (eof <|> skipMany1 pNewline))
+
+pQuote :: P Blocks
+pQuote = try $ do
+  char '>'
+  pushEndline $ optional (char '>' *> skipMany spaceChar)
+  pushBlockSep (char '>' *> skipMany spaceChar)
+  bs <- pBlocks
+  popEndline
+  popBlockSep
+  return $ quote bs
 
