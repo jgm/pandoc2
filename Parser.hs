@@ -80,6 +80,12 @@ popBlockSep = do
         EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
         ps :> _ -> setState st{ sBlockSep = ps }
 
+pBlockSep :: P ()
+pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
+
+pNewline :: P ()
+pNewline = try $ spnl *> (pBlockSep <|> (lookAhead spnl *> return ()))
+
 pEndline :: P Inlines
 pEndline =
   sp <$ try (newline *> (getState >>= sequenceA . sEndline) *> notFollowedBy spnl)
@@ -134,4 +140,7 @@ pSp = do
 
 pTxt :: P Inlines
 pTxt = literal . T.pack <$> many1 letter
+
+pPara :: P Blocks
+pPara = para <$> pInlines <* pNewline <* skipMany1 pNewline
 
