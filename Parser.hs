@@ -4,12 +4,13 @@ where
 import Definition
 import Data.Sequence as Seq
 import Data.Monoid
+import qualified Data.Map as M
 import Data.Traversable
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Data
 import Data.List (intersperse)
-import Data.Foldable (toList)
+import qualified Data.Foldable as F
 import Data.Generics
 import Text.Parsec
 import Control.Monad.Identity (Identity)
@@ -31,6 +32,7 @@ data PState = PState {
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P ())
                 , sBlockSep   :: Seq (P ())
+                , sReferences :: M.Map Key Source
                 }
 
 pstate :: PState
@@ -39,6 +41,7 @@ pstate = PState { sGetFile  = undefined
                 , sLogLevel = WARNING
                 , sEndline  = Seq.empty
                 , sBlockSep = Seq.empty
+                , sReferences = M.empty
                 }
 
 type P a = ParsecT Text PState IO a
@@ -118,11 +121,11 @@ parseWith p t = do
   case res of
        Left err -> error $ show err
        Right (x, msgs) -> do
-                   mapM_ (T.hPutStrLn stderr) $ toList msgs
+                   mapM_ (T.hPutStrLn stderr) $ F.toList msgs
                    return x
 
 pInline :: P Inlines
-pInline = choice [ pSp, pTxt, pEndline ]
+pInline = choice [ pSp, pTxt, pEndline, pLink ]
 
 pInlines :: P Inlines
 pInlines = trimInlines . mconcat <$> many1 pInline
@@ -130,6 +133,21 @@ pInlines = trimInlines . mconcat <$> many1 pInline
 pSp :: P Inlines
 pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
                   <|> return sp)
+
+pLink :: P Inlines
+pLink = pReferenceLinkSingle
+
+many1Till p q = do
+  x <- p
+  xs <- manyTill p q
+  return (x:xs)
+
+pReferenceLinkSingle :: P Inlines
+pReferenceLinkSingle =
+  mkRefLink <$> (char '[' *> (mconcat <$> many1Till pInline (char ']')))
+    where mkRefLink ils = inline $ Link (Label $ trimInlines ils)
+               (Ref{ key = Key ils
+                   , fallback = literal "[" <> ils <> literal "]" })
 
 pTxt :: P Inlines
 pTxt = literal . T.pack <$> many1 letter
@@ -144,6 +162,26 @@ trimInlines = Inlines . trimr . triml . unInlines
                     EmptyR    -> ils
                     (x :> Sp) -> trimr x
                     _         -> ils
+
+pDoc :: P Blocks
+pDoc = pBlocks >>= resolveRefs
+
+resolveRefs :: Blocks -> P Blocks
+resolveRefs bs = do
+  refs <- sReferences <$> getState
+  return $ bottomUp (handleRef refs) bs
+
+handleRef :: M.Map Key Source -> Inlines -> Inlines
+handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
+  where go (Link  lab Ref{ key = k, fallback = ils }) =
+          case M.lookup k refs of
+                 Just s  -> singleton $ Link lab s
+                 Nothing -> unInlines ils
+        go (Image lab Ref{ key = k, fallback = ils }) =
+          case M.lookup k refs of
+                 Just s  -> singleton $ Image lab s
+                 Nothing -> unInlines ils
+        go x = singleton x
 
 pBlocks :: P Blocks
 pBlocks = mconcat <$> sepEndBy pBlock pNewlines
