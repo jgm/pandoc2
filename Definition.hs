@@ -13,6 +13,7 @@ import Data.Generics
 import Data.String
 import Text.Parsec
 import Control.Monad.Identity (Identity)
+import Data.Generics.Uniplate.Data
 
 data Block = Para Inlines
            | Quote Blocks
@@ -52,10 +53,10 @@ newtype Key = Key Inlines
               deriving (Show, Read, Data, Typeable)
 
 instance Eq Key where
-  Key x == Key y = bottomUp T.toUpper x == bottomUp T.toUpper y
+  Key x == Key y = transformBi T.toUpper x == transformBi T.toUpper y
 
 instance Ord Key where
-  Key x `compare` Key y = bottomUp T.toUpper x `compare` bottomUp T.toUpper y
+  Key x `compare` Key y = transformBi T.toUpper x `compare` transformBi T.toUpper y
 
 data Attr = Attr { attrId      :: Text
                  , attrClasses :: [Text]
@@ -186,25 +187,4 @@ bulletListLoose =
 
 rawBlock :: Format -> Text -> Blocks
 rawBlock f = block . RawBlock f
-
--- Generics:
-
--- | Applies a transformation on @a@s to matching elements in a @b@,
--- moving from the bottom of the structure up.
-bottomUp :: (Data a, Data b) => (a -> a) -> b -> b
-bottomUp f = everywhere (mkT f)
-
--- | Applies a transformation on @a@s to matching elements in a @b@,
--- moving from the top of the structure down.
-topDown :: (Data a, Data b) => (a -> a) -> b -> b
-topDown f = everywhere' (mkT f)
-
--- | Like 'bottomUp', but with monadic transformations.
-bottomUpM :: (Monad m, Data a, Data b) => (a -> m a) -> b -> m b
-bottomUpM f = everywhereM (mkM f)
-
--- | Runs a query on matching @a@ elements in a @c@.  The results
--- of the queries are combined using 'mappend'.
-queryWith :: (Data a, Monoid b, Data c) => (a -> b) -> c -> b
-queryWith f = everything mappend (mempty `mkQ` f)
 

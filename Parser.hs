@@ -20,6 +20,7 @@ import System.FilePath
 import System.IO (stderr)
 import qualified Data.Text.IO as T
 import Control.Applicative ((<$>), (<$), (*>), (<*))
+import Data.Generics.Uniplate.Operations (transformBi)
 
 {- TODO:
 
@@ -199,7 +200,7 @@ pDoc = skipMany pNewline *> pBlocks <* eof >>= resolveRefs
 resolveRefs :: Blocks -> P Blocks
 resolveRefs bs = do
   refs <- sReferences <$> getState
-  return $ bottomUp (handleRef refs) bs
+  return $ transformBi (handleRef refs) bs
 
 handleRef :: M.Map Key Source -> Inlines -> Inlines
 handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
@@ -228,7 +229,7 @@ pPara = para <$> pInlines
 pQuote :: P Blocks
 pQuote = quote <$> try (quoteStart
    *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
-    where quoteStart = char '>' *> optional spaceChar
+    where quoteStart = try $ nonindentSpace *> char '>'
 
 pList :: P Blocks
 pList = pBulletList <|> pOrderedList
