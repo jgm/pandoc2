@@ -14,6 +14,7 @@ import Data.Generics
 import Text.Parsec
 import Control.Monad.Identity (Identity)
 import Control.Monad
+import Control.Arrow ((***))
 import System.FilePath
 import System.IO (stderr)
 import qualified Data.Text.IO as T
@@ -89,11 +90,11 @@ withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
 pBlockSep :: P ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
-pNewlines :: P ()
-pNewlines = try $ endBy (skipMany1 spnl) pBlockSep *> return ()
+pNewlines :: P Int
+pNewlines = try $ (Prelude.length . concat) <$> endBy1 (many1 spnl) pBlockSep
 
-pNewline :: P ()
-pNewline = try $ spnl *> pBlockSep *> return ()
+pNewline :: P Int
+pNewline = try $ spnl *> pBlockSep *> return 1
 
 pEndline :: P Inlines
 pEndline = sp <$
@@ -160,17 +161,8 @@ trimr ils = case viewr ils of
                  (x :> Sp) -> trimr x
                  _         -> ils
 
--- modified from sepBy1 in parsec3 source
--- added 'try' before 'sep >> p'
-sepBy1' :: (Stream s m t)
-        => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
-sepBy1' p sep = do{ x <- p
-                  ; xs <- many (try $ sep >> p)
-                  ; return (x:xs)
-                  }
-
 pBlocks :: P Blocks
-pBlocks = mconcat <$> sepBy1' pBlock pNewlines
+pBlocks = mconcat <$> sepEndBy pBlock pNewlines
 
 pBlock :: P Blocks
 pBlock = choice [pQuote, pList, pPara]
@@ -184,18 +176,43 @@ pQuote = quote <$> try (quoteStart
     where quoteStart = char '>' *> skipMany spaceChar
 
 pList :: P Blocks
-pList = pBulletList
+pList = pBulletList <|> pOrderedList
 
 pBulletList :: P Blocks
-pBulletList = bulletListTight <$> sepBy1' pBulletListItem pNewline
+pBulletList = do
+  (tight, bs) <- listSep (pListItem bullet)
+  return $ if tight
+              then bulletListTight bs
+              else bulletListLoose bs
 
-pBulletListItem :: P Blocks
-pBulletListItem = try $ bullet *> withBlockSep indentSpace
-  (withEndline (notFollowedBy $ optional indentSpace *> bullet) pBlocks)
---TODO generic list start, not just bullet
+pOrderedList :: P Blocks
+pOrderedList = do
+  (tight, bs) <- listSep (pListItem enum)
+  return $ if tight
+              then orderedListTight bs
+              else orderedListLoose bs
+
+listSep :: P Blocks -> P (Bool, [Blocks])
+listSep p = do
+  x <- p
+  res <- many $ try $ do m <- pNewlines
+                         n <- p
+                         return (m, n)
+  let (ts, xs) = unzip res
+  return (all (== 1) ts, x:xs)
+
+pListItem :: P a -> P Blocks
+pListItem start = try $ start *> withBlockSep indentSpace
+  (withEndline (notFollowedBy $ optional indentSpace *> listStart) pBlocks)
+
+listStart :: P Char
+listStart = bullet <|> enum
 
 bullet :: P Char
 bullet = try $ oneOf "-+*" <* spaceChar
+
+enum :: P Char
+enum = try $ (digit <|> char '#') <* char '.' <* spaceChar
 
 indentSpace :: P ()
 indentSpace = try $  (count 4 (char ' ') >> return ())
