@@ -82,7 +82,7 @@ pBlockSep :: P ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
 pNewlines :: P Int
-pNewlines = try $ (Prelude.length . concat) <$> endBy1 (many1 spnl) pBlockSep
+pNewlines = Prelude.length <$> many1 pNewline
 
 pNewline :: P Int
 pNewline = try $ spnl *> pBlockSep *> return 1
@@ -244,11 +244,16 @@ listStart :: P Char
 listStart = bullet <|> enum
 
 bullet :: P Char
-bullet = try $ oneOf "-+*" <* spaceChar
+bullet = try $ nonindentSpace *> oneOf "-+*" <* spaceChar
 
 enum :: P Char
-enum = try $ (digit <|> char '#') <* char '.' <* spaceChar
+enum = try $ nonindentSpace *> (digit <|> char '#') <* char '.' <* spaceChar
 
 indentSpace :: P ()
 indentSpace = try $  (count 4 (char ' ') >> return ())
                  <|> (char '\t' >> return ())
+                 <|> (lookAhead spnl >> return ())
+
+nonindentSpace :: P ()
+nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
+  where onesp = () <$ char ' '
