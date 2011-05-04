@@ -200,7 +200,7 @@ pBlocks :: P Blocks
 pBlocks = mconcat <$> sepEndBy pBlock pNewlines
 
 pBlock :: P Blocks
-pBlock = choice [pQuote, pList, pPara]
+pBlock = choice [pQuote, pCode, pList, pPara]
 
 pPara :: P Blocks
 pPara = para <$> pInlines
@@ -208,7 +208,7 @@ pPara = para <$> pInlines
 pQuote :: P Blocks
 pQuote = quote <$> try (quoteStart
    *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
-    where quoteStart = char '>' *> skipMany spaceChar
+    where quoteStart = char '>'
 
 pList :: P Blocks
 pList = pBulletList <|> pOrderedList
@@ -257,3 +257,11 @@ indentSpace = try $  (count 4 (char ' ') >> return ())
 nonindentSpace :: P ()
 nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
   where onesp = () <$ char ' '
+
+anyLine :: P Text
+anyLine = T.pack <$> many (satisfy (/='\n'))
+
+pCode :: P Blocks
+pCode  = toCodeBlock <$> sepBy1 (indentSpace *> anyLine) pNewline
+  where toCodeBlock = code . T.unlines . Prelude.reverse
+                    . dropWhile T.null . Prelude.reverse
