@@ -41,7 +41,7 @@ pstate = PState { sGetFile  = undefined
                 , sLogLevel = WARNING
                 , sEndline  = Seq.empty
                 , sBlockSep = Seq.empty
-                , sReferences = M.empty
+                , sReferences = M.fromList [(Key (txt "teST"), Source{ location = "/url", title = "tit" })] -- TODO M.empty
                 }
 
 type P a = ParsecT Text PState IO a
@@ -135,19 +135,32 @@ pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
                   <|> return sp)
 
 pLink :: P Inlines
-pLink = pReferenceLinkSingle
+pLink = pReferenceLink
 
 many1Till p q = do
   x <- p
   xs <- manyTill p q
   return (x:xs)
 
-pReferenceLinkSingle :: P Inlines
-pReferenceLinkSingle =
-  mkRefLink <$> (char '[' *> (mconcat <$> many1Till pInline (char ']')))
-    where mkRefLink ils = inline $ Link (Label $ trimInlines ils)
-               (Ref{ key = Key ils
-                   , fallback = literal "[" <> ils <> literal "]" })
+pBracketedInlines :: P Inlines
+pBracketedInlines = try $ char '[' *> (mconcat <$> many1Till pInline (char ']'))
+
+mkRefLink :: Inlines -> Inline
+mkRefLink ils = Link (Label $ trimInlines ils)
+                     (Ref{ key = Key ils
+                         , fallback = literal "[" <> ils <> literal "]" })
+
+pReferenceLink :: P Inlines
+pReferenceLink = try $ do
+  (Link lab x) <- mkRefLink <$> pBracketedInlines
+  s <- many spaceChar
+  (k, fall) <- option (key x, fallback x) $ try $ do
+                   s <- option mempty $ sp <$ many1 spaceChar
+                   (Link _ y) <- mkRefLink <$> pBracketedInlines
+                   let k' = if key y == Key mempty then key x else key y
+                   let f' = fallback x <> s <> fallback y
+                   return (k',f')
+  return $ inline $ Link lab Ref{ key = k, fallback = fall }
 
 pTxt :: P Inlines
 pTxt = literal . T.pack <$> many1 letter
