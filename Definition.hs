@@ -25,8 +25,8 @@ data Inline = Txt Text
             | Sp
             | Emph Inlines
             | Strong Inlines
-            | Image Label Title Source
-            | Link Label Title Source
+            | Image Label Source
+            | Link Label Source
             | Verbatim Attr Text
             | LineBreak
             | RawInline Format Text
@@ -35,11 +35,9 @@ data Inline = Txt Text
 newtype Label = Label Inlines
               deriving (Show, Read, Data, Ord, Eq, Typeable)
 
-newtype Title = Title Text
-              deriving (Show, Read, Data, Ord, Eq, Typeable)
-
-newtype Source = Source Text
-              deriving (Show, Read, Data, Ord, Eq, Typeable)
+data Source = Source { locator :: Text, title :: Text }
+            | Ref { key :: Key, fallback :: Inlines }
+            deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 newtype Format = Format Text
                deriving (Show, Read, Data, Typeable)
@@ -49,6 +47,15 @@ instance Eq Format where
 
 instance Ord Format where
   Format x `compare` Format y = T.toUpper x `compare` T.toUpper y
+
+newtype Key = Key Text
+              deriving (Show, Read, Data, Typeable)
+
+instance Eq Key where
+  Key x == Key y = T.toUpper x == T.toUpper y
+
+instance Ord Key where
+  Key x `compare` Key y = T.toUpper x `compare` T.toUpper y
 
 data Attr = Attr { attrId      :: Text
                  , attrClasses :: [Text]
@@ -128,11 +135,11 @@ emph = inline . Emph
 strong :: Inlines -> Inlines
 strong = inline . Strong
 
-link :: Inlines -> Text -> Text -> Inlines
-link lab tit src = inline $ Link (Label lab) (Title tit) (Source src)
+link :: Inlines -> Text -> Source -> Inlines
+link lab tit src = inline $ Link (Label lab) src
 
-image :: Inlines -> Text -> Text -> Inlines
-image lab tit src = inline $ Image (Label lab) (Title tit) (Source src)
+image :: Inlines -> Text -> Source -> Inlines
+image lab tit src = inline $ Image (Label lab) src
 
 verbatim :: Text -> Inlines
 verbatim = verbatimAttr nullAttr
