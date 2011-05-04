@@ -70,6 +70,9 @@ popEndline = do
         EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
         ps :> _ -> setState st{ sEndline = ps }
 
+withEndline :: P a -> P b -> P b
+withEndline sep p = pushEndline (sep *> return ()) *> p <* popEndline
+
 pushBlockSep :: P () -> P ()
 pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
 
@@ -81,9 +84,7 @@ popBlockSep = do
         ps :> _ -> setState st{ sBlockSep = ps }
 
 withBlockSep :: P a -> P b -> P b
-withBlockSep sep p = pushBlockSep (sep *> return ())
-                     *> pushEndline (optional $ sep *> return ())
-                     *> p <* popEndline <* popBlockSep
+withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
 
 pBlockSep :: P ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
@@ -92,7 +93,7 @@ pNewlines :: P ()
 pNewlines = try $ endBy (skipMany1 spnl) pBlockSep *> return ()
 
 pNewline :: P ()
-pNewline = spnl *> pBlockSep *> return ()
+pNewline = try $ spnl *> pBlockSep *> return ()
 
 pEndline :: P Inlines
 pEndline = sp <$
@@ -159,16 +160,43 @@ trimr ils = case viewr ils of
                  (x :> Sp) -> trimr x
                  _         -> ils
 
+-- modified from sepBy1 in parsec3 source
+-- added 'try' before 'sep >> p'
+sepBy1' :: (Stream s m t)
+        => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy1' p sep = do{ x <- p
+                  ; xs <- many (try $ sep >> p)
+                  ; return (x:xs)
+                  }
+
 pBlocks :: P Blocks
-pBlocks = mconcat <$> sepBy pBlock pNewlines
+pBlocks = mconcat <$> sepBy1' pBlock pNewlines
 
 pBlock :: P Blocks
-pBlock = choice [pQuote, pPara]
+pBlock = choice [pQuote, pList, pPara]
 
 pPara :: P Blocks
 pPara = para <$> pInlines
 
 pQuote :: P Blocks
-pQuote = quote <$> (quoteStart *> withBlockSep quoteStart pBlocks)
-  where quoteStart = char '>' *> skipMany spaceChar
+pQuote = quote <$> try (quoteStart
+   *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
+    where quoteStart = char '>' *> skipMany spaceChar
 
+pList :: P Blocks
+pList = pBulletList
+
+pBulletList :: P Blocks
+pBulletList = bulletListTight <$> sepBy1' pBulletListItem pNewline
+
+pBulletListItem :: P Blocks
+pBulletListItem = try $ bullet *> withBlockSep indentSpace
+  (withEndline (notFollowedBy $ optional indentSpace *> bullet) pBlocks)
+--TODO generic list start, not just bullet
+
+bullet :: P Char
+bullet = try $ oneOf "-+*" <* spaceChar
+
+indentSpace :: P ()
+indentSpace = try $  (count 4 (char ' ') >> return ())
+                 <|> (char '\t' >> return ())
