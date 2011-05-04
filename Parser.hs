@@ -21,10 +21,26 @@ import System.IO (stderr)
 import qualified Data.Text.IO as T
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 
-{-
- - - References:  use generics to extract, instead of doing two passes?
--}
+{- TODO:
 
+_ references (populate sReferences in state)
+_ raw HTML blocks
+_ emph
+_ strong
+_ escapes
+_ special chars
+x block parser for random whitespace eg. at beg and end, returns mempty?
+_ autolinks
+_ explicit links
+_ image (ref & explicit)
+_ verbatim
+_ raw HTML inline
+_ HTML writer using blaze
+_ executable
+_ tests
+_ benchmarks
+
+-}
 
 data PState = PState {
                   sGetFile    :: FilePath -> P Text
@@ -197,10 +213,13 @@ handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
         go x = singleton x
 
 pBlocks :: P Blocks
-pBlocks = mconcat <$> sepEndBy pBlock pNewlines
+pBlocks = mconcat <$> many pBlock
 
 pBlock :: P Blocks
-pBlock = choice [pQuote, pCode, pList, pPara]
+pBlock = choice [pBlank, pQuote, pCode, pList, pPara]
+
+pBlank :: P Blocks
+pBlank = mempty <$ pNewlines
 
 pPara :: P Blocks
 pPara = para <$> pInlines
