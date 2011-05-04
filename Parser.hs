@@ -125,7 +125,7 @@ pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline ]
 
 pInlines :: P Inlines
-pInlines = normalize . mconcat <$> many1 pInline
+pInlines = trimInlines . mconcat <$> many1 pInline
 
 pSp :: P Inlines
 pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
@@ -134,20 +134,16 @@ pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
 pTxt :: P Inlines
 pTxt = literal . T.pack <$> many1 letter
 
-normalize :: Inlines -> Inlines
-normalize = Inlines . trimr . triml . unInlines
-
-triml :: Seq Inline -> Seq Inline
-triml ils = case viewl ils of
-                 EmptyL    -> ils
-                 (Sp :< x) -> triml x
-                 _         -> ils
-
-trimr :: Seq Inline -> Seq Inline
-trimr ils = case viewr ils of
-                 EmptyR    -> ils
-                 (x :> Sp) -> trimr x
-                 _         -> ils
+trimInlines :: Inlines -> Inlines
+trimInlines = Inlines . trimr . triml . unInlines
+  where triml ils = case viewl ils of
+                    EmptyL    -> ils
+                    (Sp :< x) -> triml x
+                    _         -> ils
+        trimr ils = case viewr ils of
+                    EmptyR    -> ils
+                    (x :> Sp) -> trimr x
+                    _         -> ils
 
 pBlocks :: P Blocks
 pBlocks = mconcat <$> sepEndBy pBlock pNewlines
