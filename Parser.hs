@@ -21,19 +21,7 @@ import qualified Data.Text.IO as T
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 
 {-
- - Processing model:
- - sEndline - Seq of parsers;
- -    when we hit a Quote block, add "optional > "
- -    when we hit a list item, add "optional (spaces notfollowedby listmarker)"
- -    parse in sequence, then return Sp
- - sBlockSep - optional blanklines (dep. on tight/loose) >> Seq of parsers;
- -    when we hit a Quote block, add "> "
- -    when we hit a list item, add "indentspace or blankline"
- - use Data.Traversable.sequence to run all the parsers
- -
- - when we hit a new list item or exit the quote, pop stuff off of these.
-
- - References:  use generics to extract, instead of doing two passes?
+ - - References:  use generics to extract, instead of doing two passes?
 -}
 
 
