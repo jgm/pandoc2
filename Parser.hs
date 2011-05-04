@@ -11,13 +11,13 @@ import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
 import Data.Generics
-import Text.Parsec hiding ((<|>), many, optional)
+import Text.Parsec
 import Control.Monad.Identity (Identity)
 import Control.Monad
 import System.FilePath
 import System.IO (stderr)
 import qualified Data.Text.IO as T
-import Control.Applicative
+import Control.Applicative ((<$>), (<$), (*>), (<*))
 
 {-
  - Processing model:
@@ -60,8 +60,8 @@ instance Stream Text IO Char where
 data LogLevel = DEBUG | INFO | WARNING | ERROR
               deriving (Ord, Eq, Show, Read)
 
-pushEndline :: P a -> P ()
-pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> (p *> return ()) }
+pushEndline :: P () -> P ()
+pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
 
 popEndline :: P ()
 popEndline = do
@@ -70,8 +70,8 @@ popEndline = do
         EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
         ps :> _ -> setState st{ sEndline = ps }
 
-pushBlockSep :: P a -> P ()
-pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> (p *> return ()) }
+pushBlockSep :: P () -> P ()
+pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
 
 popBlockSep :: P ()
 popBlockSep = do
@@ -80,11 +80,16 @@ popBlockSep = do
         EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
         ps :> _ -> setState st{ sBlockSep = ps }
 
+withBlockSep :: P a -> P b -> P b
+withBlockSep sep p = pushBlockSep (sep *> return ())
+                     *> pushEndline (optional $ sep *> return ())
+                     *> p <* popEndline <* popBlockSep
+
 pBlockSep :: P ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
 pNewlines :: P ()
-pNewlines = endBy (skipMany1 spnl) pBlockSep *> return ()
+pNewlines = try $ endBy (skipMany1 spnl) pBlockSep *> return ()
 
 pNewline :: P ()
 pNewline = spnl *> pBlockSep *> return ()
@@ -164,13 +169,6 @@ pPara :: P Blocks
 pPara = para <$> pInlines
 
 pQuote :: P Blocks
-pQuote = try $ do
-  char '>'
-  skipMany spaceChar
-  pushEndline  $ optional (char '>') *> skipMany spaceChar
-  pushBlockSep $ char '>' *> skipMany spaceChar
-  bs <- pBlocks
-  popEndline
-  popBlockSep
-  return $ quote bs
+pQuote = quote <$> (quoteStart *> withBlockSep quoteStart pBlocks)
+  where quoteStart = char '>' *> skipMany spaceChar
 
