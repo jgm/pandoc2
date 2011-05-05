@@ -16,6 +16,7 @@ import Control.Monad.Identity (Identity)
 import Data.Generics.Uniplate.Data
 
 data Block = Para Inlines
+           | Plain Inlines
            | Quote Blocks
            | Code Attr Text
            | List ListAttr [Blocks]
