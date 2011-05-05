@@ -218,7 +218,7 @@ pBlocks :: P Blocks
 pBlocks = mconcat <$> pBlock `sepEndBy` pNewlines
 
 pBlock :: P Blocks
-pBlock = choice [pQuote, pCode, pList, pPara]
+pBlock = choice [pQuote, pCode, pList, pReference, pPara]
 
 pBlank :: P Blocks
 pBlank = mempty <$ pNewlines
@@ -295,3 +295,23 @@ sepBy' p sep = do
   x <- p
   xs <- many $ try (sep *> p)
   return (x:xs)
+
+pReference :: P Blocks
+pReference = try $ do
+  nonindentSpace
+  key <- Key <$> pBracketedInlines
+  char ':'
+  skipMany spaceChar
+  loc <- pLocation
+  skipMany spaceChar -- TODO newline
+  tit <- pTitle
+  let src = Source{ location = loc, title = tit }
+  modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
+  return mempty
+
+pLocation :: P Text
+pLocation = undefined
+
+pTitle :: P Text
+pTitle = undefined
+
