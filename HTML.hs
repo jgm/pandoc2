@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module HTML where
 import Definition
+import Data.Monoid
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Foldable as F
-import Data.Text.Lazy (Text)
-import Data.Generics.Uniplate.Operations (transformBi)
+import qualified Data.Text.Lazy as L
+import Data.Generics.Uniplate.Operations (transformBi, transformBiM)
 
 nl :: Html
 nl = preEscapedText "\n"
@@ -29,14 +30,27 @@ blockToHtml (List attr bs) = do
        Bullet    -> H.ul $ nl >> items
        Ordered   -> H.ol $ nl >> items
 blockToHtml (Code _attr t) = H.pre $ H.code $ toHtml t
+blockToHtml (RawBlock (Format "html") t) = preEscapedText t
+blockToHtml (RawBlock _ _) = return ()
 
 inlinesToHtml :: Inlines -> Html
 inlinesToHtml = F.mapM_ inlineToHtml . unInlines
 
 inlineToHtml :: Inline -> Html
 inlineToHtml (Txt x) = toHtml x
-inlineToHtml Sp      = toHtml (" " :: Text)
-inlineToHtml (Link (Label lab) src) =
+inlineToHtml Sp      = toHtml (" " :: L.Text)
+inlineToHtml (Emph ils) = H.em $ inlinesToHtml ils
+inlineToHtml (Strong ils) = H.strong $ inlinesToHtml ils
+inlineToHtml (Link _ Ref{}) = error "Encountered Ref link!"
+inlineToHtml (Link (Label lab) src@Source{}) =
   H.a ! A.href (toValue $ location src) ! A.title (toValue $ title src)
   $ inlinesToHtml lab
+inlineToHtml (Image _ Ref{}) = error "Encountered Ref image!"
+inlineToHtml (Image (Label lab) src@Source{}) = do
+  H.img ! A.src (toValue $ location src) ! A.title (toValue $ title src)
+        ! A.alt (toValue ("TBD" :: String))  --textify lab)
+inlineToHtml LineBreak = H.br
+inlineToHtml (RawInline (Format "html") t) = preEscapedText t
+inlineToHtml (RawInline _ _) = return ()
+inlineToHtml (Verbatim _attr t) = H.code $ toHtml t
 
