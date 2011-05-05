@@ -26,7 +26,7 @@ import Data.Generics.Uniplate.Operations (transformBi)
 
 _ references (populate sReferences in state)
 _ raw HTML blocks
-_ emph
+x emph
 _ strong
 _ escapes
 _ special chars
@@ -143,7 +143,7 @@ parseWith p t = do
                    return x
 
 pInline :: P Inlines
-pInline = choice [ pSp, pTxt, pEndline, pEmph, pLink ]
+pInline = choice [ pSp, pTxt, pEndline, pFours, pEmph, pLink ]
 
 pInlines :: P Inlines
 pInlines = trimInlines . mconcat <$> many1 pInline
@@ -190,6 +190,14 @@ pTxt = do
 pInlinesBetween :: P a -> P b -> P Inlines
 pInlinesBetween start end =
   mconcat <$> try (start *> manyTill pInline end)
+
+pFours :: P Inlines
+pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
+  x <- (char '*' <|> char '_')
+  y <- char x
+  z <- char x
+  rest <- many1 (char x)
+  return $ literal $ T.pack $ x : y : z : rest
 
 pEmph :: P Inlines
 pEmph = emph <$>
