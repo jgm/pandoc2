@@ -27,7 +27,7 @@ import Data.Generics.Uniplate.Operations (transformBi)
 _ references (populate sReferences in state)
 _ raw HTML blocks
 x emph
-_ strong
+x strong
 _ escapes
 _ special chars
 x block parser for random whitespace eg. at beg and end, returns mempty?
@@ -143,7 +143,7 @@ parseWith p t = do
                    return x
 
 pInline :: P Inlines
-pInline = choice [ pSp, pTxt, pEndline, pFours, pEmph, pLink ]
+pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pLink ]
 
 pInlines :: P Inlines
 pInlines = trimInlines . mconcat <$> many1 pInline
@@ -206,6 +206,14 @@ pEmph = emph <$>
           starEnd   = char '*'
           ulStart   = char '_' *> notFollowedBy (spaceChar <|> newline)
           ulEnd     = char '_'
+
+pStrong :: P Inlines
+pStrong = strong <$>
+  (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
+    where starStart = string "**" *> notFollowedBy (spaceChar <|> newline)
+          starEnd   = try (string "**")
+          ulStart   = string "__" *> notFollowedBy (spaceChar <|> newline)
+          ulEnd     = try (string "__")
 
 trimInlines :: Inlines -> Inlines
 trimInlines = Inlines . trimr . triml . unInlines
