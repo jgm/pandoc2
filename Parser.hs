@@ -146,10 +146,17 @@ parseWith p t = do
                    return x
 
 pInline :: P Inlines
-pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pLink ]
+pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pLink,
+                   pEscaped, pSymbol ]
 
 pInlines :: P Inlines
 pInlines = trimInlines . mconcat <$> many1 pInline
+
+pEscaped :: P Inlines
+pEscaped = txt . T.singleton <$> (char '\\' *> oneOf "\\`*_{}[]()>#+-.!~")
+
+pSymbol :: P Inlines
+pSymbol = txt . T.singleton <$> satisfy (/='\n')
 
 pSp :: P Inlines
 pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
