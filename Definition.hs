@@ -20,6 +20,7 @@ data Block = Para Inlines
            | Quote Blocks
            | Code Attr Text
            | List ListAttr [Blocks]
+           | Header Int Inlines
            | RawBlock Format Text
            deriving (Show, Read, Data, Ord, Eq, Typeable)
 
@@ -185,6 +186,9 @@ bulletListTight =
 bulletListLoose :: [Blocks] -> Blocks
 bulletListLoose =
   block . List ListAttr{ listTight = False, listStyle = Bullet }
+
+header :: Int -> Inlines -> Blocks
+header n = block . Header n
 
 rawBlock :: Format -> Text -> Blocks
 rawBlock f = block . RawBlock f

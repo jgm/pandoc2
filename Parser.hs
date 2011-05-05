@@ -31,6 +31,7 @@ x strong
 _ escapes
 _ special chars
 x block parser for random whitespace eg. at beg and end, returns mempty?
+_ proper escaping for URLs
 _ autolinks
 _ explicit links
 _ image (ref & explicit)
@@ -40,6 +41,7 @@ _ HTML writer using blaze
 _ executable
 _ tests
 _ benchmarks
+_ headers
 
 -}
 
