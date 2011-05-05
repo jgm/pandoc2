@@ -181,7 +181,11 @@ pReferenceLink = try $ do
   return $ inline $ Link lab Ref{ key = k, fallback = fall }
 
 pTxt :: P Inlines
-pTxt = literal . T.pack <$> many1 letter
+pTxt = do
+  x <- letter
+  let txtchar = letter <|> (char '_' <* lookAhead txtchar)
+  xs <- many txtchar
+  return $ literal $ T.pack (x:xs)
 
 trimInlines :: Inlines -> Inlines
 trimInlines = Inlines . trimr . triml . unInlines
