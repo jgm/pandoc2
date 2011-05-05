@@ -21,16 +21,18 @@ import System.IO (stderr)
 import qualified Data.Text.IO as T
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Data.Generics.Uniplate.Operations (transformBi)
+import Network.URI ( escapeURIString, isAllowedInURI )
 
 {- TODO:
 
 _ references (populate sReferences in state)
 x emph
 x strong
-_ escapes
-_ special chars
+x escapes
+x special chars
 x block parser for random whitespace eg. at beg and end, returns mempty?
 _ proper escaping for URLs
+  escapeURI = escapeURIString isAllowedInURI . encodeString
 _ autolinks
 _ explicit links
 _ image (ref & explicit)
@@ -112,8 +114,14 @@ pEndline = try $
   newline *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
   lookAhead (satisfy (/='\n')) *> return sp
 
+sps :: P ()
+sps = skipMany spaceChar
+
 spnl :: P ()
-spnl = try $ skipMany spaceChar <* newline
+spnl = try $ sps <* newline
+
+spnlsp :: P ()
+spnlsp = try $ sps <* optional (newline <* sps)
 
 spaceChar :: P Char
 spaceChar = satisfy (\c -> c == ' ' || c == '\t')
@@ -343,17 +351,17 @@ pReference = try $ do
   nonindentSpace
   key <- Key <$> pBracketedInlines
   char ':'
-  skipMany spaceChar
-  loc <- pLocation
-  skipMany spaceChar -- TODO newline
-  tit <- pTitle
+  spnlsp
+  loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
+  spnlsp
+  tit <- option "" pRefTitle
   let src = Source{ location = loc, title = tit }
   modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
   return mempty
 
-pLocation :: P Text
-pLocation = undefined
-
-pTitle :: P Text
-pTitle = undefined
-
+pRefTitle :: P Text
+pRefTitle =  pRefTitleWith '\'' '\''
+         <|> pRefTitleWith '"' '"'
+         <|> pRefTitleWith '(' ')'
+  where pRefTitleWith start end = T.pack <$> (char start *> manyTill (satisfy (/='\n'))
+             (try $ char end *> lookAhead (() <$ spnl <|> eof)))
