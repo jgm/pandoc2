@@ -120,8 +120,8 @@ sps = skipMany spaceChar
 spnl :: P ()
 spnl = try $ sps <* newline
 
-spnlsp :: P ()
-spnlsp = try $ sps <* optional (newline <* sps)
+spOptnlsp :: P ()
+spOptnlsp = try $ sps <* optional (newline <* sps)
 
 spaceChar :: P Char
 spaceChar = satisfy (\c -> c == ' ' || c == '\t')
@@ -351,9 +351,9 @@ pReference = try $ do
   nonindentSpace
   key <- Key <$> pBracketedInlines
   char ':'
-  spnlsp
+  spOptnlsp
   loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
-  spnlsp
+  spOptnlsp
   tit <- option "" pRefTitle
   let src = Source{ location = loc, title = tit }
   modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
