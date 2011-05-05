@@ -9,6 +9,7 @@ import Data.Traversable
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Data
+import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import qualified Data.Foldable as F
 import Data.Generics
@@ -19,6 +20,7 @@ import Control.Arrow ((***))
 import System.FilePath
 import System.IO (stderr)
 import qualified Data.Text.IO as T
+import qualified Data.Text.Encoding as E
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Data.Generics.Uniplate.Operations (transformBi)
 import Network.URI ( escapeURIString, isAllowedInURI )
@@ -63,7 +65,7 @@ pstate = PState { sGetFile  = undefined
                 , sLogLevel = WARNING
                 , sEndline  = Seq.empty
                 , sBlockSep = Seq.empty
-                , sReferences = M.fromList [(Key (txt "teST"), Source{ location = "/url", title = "tit" })] -- TODO M.empty
+                , sReferences = M.empty
                 }
 
 type P a = ParsecT Text PState IO a
@@ -355,9 +357,12 @@ pReference = try $ do
   loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
   spOptNl
   tit <- option "" pRefTitle
-  let src = Source{ location = loc, title = tit }
+  let src = Source{ location = escapeURI loc, title = tit }
   modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
   return mempty
+
+escapeURI :: Text -> Text
+escapeURI = T.pack . escapeURIString isAllowedInURI . B8.unpack . E.encodeUtf8
 
 pRefTitle :: P Text
 pRefTitle =  pRefTitleWith '\'' '\''
