@@ -32,6 +32,14 @@ blockToHtml (List attr bs) = do
 blockToHtml (Code _attr t) = H.pre $ H.code $ toHtml t
 blockToHtml (RawBlock (Format "html") t) = preEscapedText t
 blockToHtml (RawBlock _ _) = return ()
+blockToHtml (Header lev ils) = h $ inlinesToHtml ils
+  where h = case lev of
+             1  -> H.h1
+             2  -> H.h2
+             3  -> H.h3
+             4  -> H.h4
+             5  -> H.h5
+             _  -> H.p
 
 inlinesToHtml :: Inlines -> Html
 inlinesToHtml = F.mapM_ inlineToHtml . unInlines

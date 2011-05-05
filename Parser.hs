@@ -33,8 +33,7 @@ x strong
 x escapes
 x special chars
 x block parser for random whitespace eg. at beg and end, returns mempty?
-_ proper escaping for URLs
-  escapeURI = escapeURIString isAllowedInURI . encodeString
+x proper escaping for URLs
 _ autolinks
 _ explicit links
 _ image (ref & explicit)
