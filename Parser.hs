@@ -143,7 +143,7 @@ parseWith p t = do
                    return x
 
 pInline :: P Inlines
-pInline = choice [ pSp, pTxt, pEndline, pLink ]
+pInline = choice [ pSp, pTxt, pEndline, pEmph, pLink ]
 
 pInlines :: P Inlines
 pInlines = trimInlines . mconcat <$> many1 pInline
@@ -183,9 +183,21 @@ pReferenceLink = try $ do
 pTxt :: P Inlines
 pTxt = do
   x <- letter
-  let txtchar = letter <|> (char '_' <* lookAhead txtchar)
+  let txtchar = letter <|> (try $ char '_' <* lookAhead txtchar)
   xs <- many txtchar
   return $ literal $ T.pack (x:xs)
+
+pInlinesBetween :: P a -> P b -> P Inlines
+pInlinesBetween start end =
+  mconcat <$> try (start *> manyTill pInline end)
+
+pEmph :: P Inlines
+pEmph = emph <$>
+  (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
+    where starStart = char '*' *> notFollowedBy (spaceChar <|> newline)
+          starEnd   = char '*'
+          ulStart   = char '_' *> notFollowedBy (spaceChar <|> newline)
+          ulEnd     = char '_'
 
 trimInlines :: Inlines -> Inlines
 trimInlines = Inlines . trimr . triml . unInlines
