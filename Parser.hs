@@ -25,7 +25,6 @@ import Data.Generics.Uniplate.Operations (transformBi)
 {- TODO:
 
 _ references (populate sReferences in state)
-_ raw HTML blocks
 x emph
 x strong
 _ escapes
@@ -36,12 +35,14 @@ _ autolinks
 _ explicit links
 _ image (ref & explicit)
 _ verbatim
+_ setext headers
+_ atx headers
 _ raw HTML inline
+_ raw HTML blocks
 _ HTML writer using blaze
 _ executable
 _ tests
 _ benchmarks
-_ headers
 
 -}
 
