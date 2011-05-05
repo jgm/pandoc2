@@ -28,6 +28,8 @@ blockToHtml (List attr bs) = do
   case listStyle attr of
        Bullet    -> H.ul $ nl >> items
        Ordered   -> H.ol $ nl >> items
+blockToHtml (Code _attr t) = H.pre $ H.code $ toHtml t
+
 inlinesToHtml :: Inlines -> Html
 inlinesToHtml = F.mapM_ inlineToHtml . unInlines
 

@@ -286,6 +286,12 @@ pCode  = try $ do
   indentSpace
   x <- anyLine
   pNewline
-  xs <- sepBy ((indentSpace <|> lookAhead spnl) *> anyLine) pNewline
+  xs <- sepBy' ((indentSpace <|> lookAhead spnl) *> anyLine) pNewline
   return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
          $ Prelude.reverse (x:xs)
+
+sepBy' :: P a -> P b -> P [a]
+sepBy' p sep = do
+  x <- p
+  xs <- many $ try (sep *> p)
+  return (x:xs)
