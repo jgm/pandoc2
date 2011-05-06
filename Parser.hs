@@ -42,7 +42,7 @@ x autolinks
 x image (ref & explicit)
 x verbatim
 x image "TBD" in HTML.hs
-_ explicit links (finish pSource, pTitle - use peg-markdown)
+x explicit links (finish pSource, pTitle - use peg-markdown)
 _ raw HTML inline
 _ raw HTML blocks
 x executable
@@ -140,6 +140,9 @@ spOptNl = try $ sps <* optional (pNewline <* sps)
 spaceChar :: P Char
 spaceChar = satisfy (\c -> c == ' ' || c == '\t')
 
+nonSpaceChar :: P Char
+nonSpaceChar = satisfy  (\c -> c /= ' ' && c /= '\n' && c /= '\t')
+
 showText :: Show a => a -> Text
 showText = T.pack . show
 
@@ -188,11 +191,11 @@ pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
                   <|> return sp)
 
 pAutolink :: P Inlines
-pAutolink = mkLink <$> uri
+pAutolink = mkLink <$> pUri
   where mkLink u = link (txt u) Source{ location = escapeURI u, title = "" }
 
-uri :: P Text
-uri = T.pack
+pUri :: P Text
+pUri = T.pack
   <$> try (char '<' *> lookAhead protocol *> manyTill nonnl (char '>'))
     where protocol = choice $ map (try . string)
            ["http:", "https:", "ftp:", "file:", "mailto:", "news:", "telnet:" ]
@@ -234,10 +237,18 @@ pExplicitLink lab = try $ do
   return $ inline $ Link lab Source{ location = escapeURI src, title = tit }
 
 pSource :: P Text
-pSource = undefined
+pSource = T.pack
+       <$> ((char '<' *> manyTill nonnl (char '>'))
+       <|> (notFollowedBy quoteChar *> many nonSpaceChar))
+
+quoteChar :: P Char
+quoteChar = satisfy $ \c -> c == '\'' || c == '"'
 
 pTitle :: P Text
-pTitle = undefined
+pTitle = do
+  c <- quoteChar
+  let end = char c *> lookAhead (sps *> char ')')
+  T.pack <$> manyTill anyChar end
 
 pReferenceLink :: Label -> Source -> String -> P Inlines
 pReferenceLink lab x s = try $ do
@@ -429,8 +440,7 @@ pReference = try $ do
   char ':'
   spOptNl
   loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
-  spOptNl
-  tit <- option "" pRefTitle
+  tit <- option "" $ spOptNl *> pRefTitle
   let src = Source{ location = escapeURI loc, title = tit }
   modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
   return mempty
