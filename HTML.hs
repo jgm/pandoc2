@@ -6,6 +6,7 @@ import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Foldable as F
+import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import Data.Generics.Uniplate.Operations (transformBi, transformBiM)
 
@@ -51,9 +52,10 @@ inlineToHtml Sp      = toHtml (" " :: L.Text)
 inlineToHtml (Emph ils) = H.em $ inlinesToHtml ils
 inlineToHtml (Strong ils) = H.strong $ inlinesToHtml ils
 inlineToHtml (Link _ Ref{}) = error "Encountered Ref link!"
-inlineToHtml (Link (Label lab) src@Source{}) =
-  H.a ! A.href (toValue $ location src) ! A.title (toValue $ title src)
-  $ inlinesToHtml lab
+inlineToHtml (Link (Label lab) src@Source{}) = do
+  let tit = title src
+  let x = H.a ! A.href (toValue $ location src) $ inlinesToHtml lab
+  if T.null tit then x else x ! A.title (toValue $ title src)
 inlineToHtml (Image _ Ref{}) = error "Encountered Ref image!"
 inlineToHtml (Image (Label lab) src@Source{}) = do
   H.img ! A.src (toValue $ location src) ! A.title (toValue $ title src)

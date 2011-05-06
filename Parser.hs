@@ -38,7 +38,7 @@ x setext headers
 x atx headers
 x HTML writer using blaze
 x hrule
-_ autolinks
+x autolinks
 _ explicit links
 _ image (ref & explicit)
 x verbatim
@@ -186,9 +186,6 @@ pSp :: P Inlines
 pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
                   <|> return sp)
 
-pLink :: P Inlines
-pLink = pReferenceLink
-
 pAutolink :: P Inlines
 pAutolink = mkLink <$> uri
   where mkLink u = link (txt u) Source{ location = escapeURI u, title = "" }
@@ -210,12 +207,20 @@ pBracketedInlines = try $
 
 mkRefLink :: Inlines -> Inline
 mkRefLink ils = Link (Label ils)
-                (Ref{ key = Key ils , fallback = literal "[" <> ils <> literal "]" })
+       (Ref{ key = Key ils , fallback = literal "[" <> ils <> literal "]" })
 
-pReferenceLink :: P Inlines
-pReferenceLink = try $ do
+pLink :: P Inlines
+pLink = try $ do
   (Link lab x) <- mkRefLink <$> pBracketedInlines
   s <- many spaceChar
+  pExplicitLink lab <|> pReferenceLink lab x s
+
+pExplicitLink :: Label -> P Inlines
+pExplicitLink lab = try $ do
+  fail "todo"
+
+pReferenceLink :: Label -> Source -> String -> P Inlines
+pReferenceLink lab x s = try $ do
   (k, fall) <- option (key x, fallback x) $ try $ do
                    s <- option mempty $ sp <$ many1 spaceChar
                    (Link _ y) <- mkRefLink <$> pBracketedInlines
