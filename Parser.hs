@@ -347,9 +347,9 @@ pHeaderSetext = try $ do
   lookAhead $ skipMany nonnl *> pNewline *> setextChar
   ils <- toInlines <$> many1Till pInline newline
   c <- setextChar
-  count 2 $ char c
-  let level = if c == '=' then 1 else 2
+  skipMany (char c)
   lookAhead spnl
+  let level = if c == '=' then 1 else 2
   return $ header level ils
 
 pHeaderATX :: P Blocks
