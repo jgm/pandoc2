@@ -157,7 +157,7 @@ pInlines :: P Inlines
 pInlines = toInlines <$> many1 pInline
 
 pEscaped :: P Inlines
-pEscaped = txt . T.singleton <$> (char '\\' *> oneOf "\\`*_{}[]()>#+-.!~")
+pEscaped = txt . T.singleton <$> (try $ char '\\' *> oneOf "\\`*_{}[]()>#+-.!~")
 
 pSymbol :: P Inlines
 pSymbol = txt . T.singleton <$> nonnl
