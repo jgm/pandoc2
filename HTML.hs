@@ -59,7 +59,7 @@ inlineToHtml (Link (Label lab) src@Source{}) = do
 inlineToHtml (Image _ Ref{}) = error "Encountered Ref image!"
 inlineToHtml (Image (Label lab) src@Source{}) = do
   H.img ! A.src (toValue $ location src) ! A.title (toValue $ title src)
-        ! A.alt (toValue ("TBD" :: String))  --textify lab)
+        ! A.alt (toValue $ textify lab)
 inlineToHtml LineBreak = H.br
 inlineToHtml (RawInline (Format "html") t) = preEscapedText t
 inlineToHtml (RawInline _ _) = return ()

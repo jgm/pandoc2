@@ -41,8 +41,8 @@ x hrule
 x autolinks
 x image (ref & explicit)
 x verbatim
+x image "TBD" in HTML.hs
 _ explicit links (finish pSource, pTitle - use peg-markdown)
-_ image "TBD" in HTML.hs
 _ raw HTML inline
 _ raw HTML blocks
 x executable
