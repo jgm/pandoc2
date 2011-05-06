@@ -22,6 +22,7 @@ data Block = Para Inlines
            | List ListAttr [Blocks]
            | Header Int Inlines
            | RawBlock Format Text
+           | HRule
            deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 data Inline = Txt Text
@@ -193,3 +194,5 @@ header n = block . Header n
 rawBlock :: Format -> Text -> Blocks
 rawBlock f = block . RawBlock f
 
+hrule :: Blocks
+hrule = block HRule

@@ -37,6 +37,7 @@ x proper escaping for URLs
 x setext headers
 x atx headers
 x HTML writer using blaze
+_ hrule
 _ autolinks
 _ explicit links
 _ image (ref & explicit)
@@ -283,7 +284,7 @@ pBlocks :: P Blocks
 pBlocks = mconcat <$> pBlock `sepEndBy` pNewlines
 
 pBlock :: P Blocks
-pBlock = choice [pQuote, pCode, pList, pReference, pHeader, pPara]
+pBlock = choice [pQuote, pCode, pHrule, pList, pReference, pHeader, pPara]
 
 pBlank :: P Blocks
 pBlank = mempty <$ pNewlines
@@ -378,6 +379,15 @@ pCode  = try $ do
   xs <- sepBy' ((indentSpace <|> lookAhead spnl) *> anyLine) pNewline
   return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
          $ Prelude.reverse (x:xs)
+
+pHrule :: P Blocks
+pHrule = try $ do
+  sps
+  c <- satisfy $ \x -> x == '*' || x == '-' || x == '_'
+  count 2 $ sps *> char c
+  skipMany $ sps *> char c
+  lookAhead spnl
+  return hrule
 
 sepBy' :: P a -> P b -> P [a]
 sepBy' p sep = do

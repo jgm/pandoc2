@@ -40,6 +40,7 @@ blockToHtml (Header lev ils) = h $ inlinesToHtml ils
              4  -> H.h4
              5  -> H.h5
              _  -> H.p
+blockToHtml HRule = H.hr
 
 inlinesToHtml :: Inlines -> Html
 inlinesToHtml = F.mapM_ inlineToHtml . unInlines
