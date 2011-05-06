@@ -196,3 +196,13 @@ rawBlock f = block . RawBlock f
 
 hrule :: Blocks
 hrule = block HRule
+
+-----------------
+
+textify :: Inlines -> Text
+textify = T.concat . map extractText . universeBi
+  where extractText :: Inline -> Text
+        extractText (Txt t)   = t
+        extractText Sp        = " "
+        extractText LineBreak = " "
+        extractText x         = ""
