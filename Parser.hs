@@ -135,7 +135,7 @@ spnl :: P ()
 spnl = try $ sps <* newline
 
 spOptNl :: P ()
-spOptNl = try $ sps <* optional (newline <* sps)
+spOptNl = try $ sps <* optional (pNewline <* sps)
 
 spaceChar :: P Char
 spaceChar = satisfy (\c -> c == ' ' || c == '\t')
