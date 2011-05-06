@@ -39,9 +39,10 @@ x atx headers
 x HTML writer using blaze
 x hrule
 x autolinks
-_ explicit links
-_ image (ref & explicit)
+x image (ref & explicit)
 x verbatim
+_ explicit links (finish pSource, pTitle - use peg-markdown)
+_ image "TBD" in HTML.hs
 _ raw HTML inline
 _ raw HTML blocks
 x executable
@@ -168,7 +169,7 @@ parseWith p t = do
 
 pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
-                   pLink, pAutolink, pEscaped, pSymbol ]
+                   pImage, pLink, pAutolink, pEscaped, pSymbol ]
 
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
@@ -209,6 +210,12 @@ mkRefLink :: Inlines -> Inline
 mkRefLink ils = Link (Label ils)
        (Ref{ key = Key ils , fallback = literal "[" <> ils <> literal "]" })
 
+pImage :: P Inlines
+pImage = try $ do
+  char '!'
+  [Link lab x] <- F.toList . unInlines <$> pLink
+  return $ inline $ Image lab x
+
 pLink :: P Inlines
 pLink = try $ do
   (Link lab x) <- mkRefLink <$> pBracketedInlines
@@ -217,7 +224,20 @@ pLink = try $ do
 
 pExplicitLink :: Label -> P Inlines
 pExplicitLink lab = try $ do
-  fail "todo"
+  char '('
+  sps
+  src <- pSource
+  spOptNl
+  tit <- option "" pTitle
+  sps
+  char ')'
+  return $ inline $ Link lab Source{ location = escapeURI src, title = tit }
+
+pSource :: P Text
+pSource = undefined
+
+pTitle :: P Text
+pTitle = undefined
 
 pReferenceLink :: Label -> Source -> String -> P Inlines
 pReferenceLink lab x s = try $ do
@@ -265,15 +285,7 @@ pStrong = strong <$>
           ulEnd     = try (string "__")
 
 trimInlines :: Inlines -> Inlines
-trimInlines = Inlines . trimr . triml . unInlines
-  where triml ils = case viewl ils of
-                    EmptyL    -> ils
-                    (Sp :< x) -> triml x
-                    _         -> ils
-        trimr ils = case viewr ils of
-                    EmptyR    -> ils
-                    (x :> Sp) -> trimr x
-                    _         -> ils
+trimInlines = Inlines . dropWhileL (== Sp) . dropWhileR (== Sp) . unInlines
 
 pDoc :: P Blocks
 pDoc = skipMany pNewline *> pBlocks <* eof >>= resolveRefs
