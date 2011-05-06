@@ -36,14 +36,14 @@ x block parser for random whitespace eg. at beg and end, returns mempty?
 x proper escaping for URLs
 x setext headers
 x atx headers
+x HTML writer using blaze
 _ autolinks
 _ explicit links
 _ image (ref & explicit)
-_ verbatim
+x verbatim
 _ raw HTML inline
 _ raw HTML blocks
-_ HTML writer using blaze
-_ executable
+x executable
 _ tests
 _ benchmarks
 
@@ -115,6 +115,14 @@ pEndline = try $
   newline *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
   lookAhead nonnl *> return sp
 
+pVerbatim :: P Inlines
+pVerbatim = try $ do
+  delim <- many1 (char '`')
+  sps
+  verbatim . T.pack
+     <$> many1Till (nonnl <|> (' ' <$ (pNewline *> notFollowedBy spnl)))
+            (try $ sps *> string delim *> notFollowedBy (char '`'))
+
 nonnl :: P Char
 nonnl = satisfy (/= '\n')
 
@@ -158,8 +166,8 @@ parseWith p t = do
                    return x
 
 pInline :: P Inlines
-pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pLink,
-                   pEscaped, pSymbol ]
+pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
+                   pLink, pEscaped, pSymbol ]
 
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
