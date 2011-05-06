@@ -27,19 +27,19 @@ import Network.URI ( escapeURIString, isAllowedInURI )
 
 {- TODO:
 
-_ references (populate sReferences in state)
+x references (populate sReferences in state)
 x emph
 x strong
 x escapes
 x special chars
 x block parser for random whitespace eg. at beg and end, returns mempty?
 x proper escaping for URLs
+x setext headers
+x atx headers
 _ autolinks
 _ explicit links
 _ image (ref & explicit)
 _ verbatim
-_ setext headers
-_ atx headers
 _ raw HTML inline
 _ raw HTML blocks
 _ HTML writer using blaze
@@ -113,7 +113,10 @@ pNewline = try $ spnl *> pBlockSep *> return 1
 pEndline :: P Inlines
 pEndline = try $
   newline *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
-  lookAhead (satisfy (/='\n')) *> return sp
+  lookAhead nonnl *> return sp
+
+nonnl :: P Char
+nonnl = satisfy (/= '\n')
 
 sps :: P ()
 sps = skipMany spaceChar
@@ -158,14 +161,17 @@ pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pLink,
                    pEscaped, pSymbol ]
 
+toInlines :: [Inlines] -> Inlines
+toInlines = trimInlines . mconcat
+
 pInlines :: P Inlines
-pInlines = trimInlines . mconcat <$> many1 pInline
+pInlines = toInlines <$> many1 pInline
 
 pEscaped :: P Inlines
 pEscaped = txt . T.singleton <$> (char '\\' *> oneOf "\\`*_{}[]()>#+-.!~")
 
 pSymbol :: P Inlines
-pSymbol = txt . T.singleton <$> satisfy (/='\n')
+pSymbol = txt . T.singleton <$> nonnl
 
 pSp :: P Inlines
 pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
@@ -180,12 +186,12 @@ many1Till p q = do
   return (x:xs)
 
 pBracketedInlines :: P Inlines
-pBracketedInlines = try $ char '[' *> (mconcat <$> many1Till pInline (char ']'))
+pBracketedInlines = try $
+  char '[' *> (toInlines <$> many1Till pInline (char ']'))
 
 mkRefLink :: Inlines -> Inline
-mkRefLink ils = Link (Label $ trimInlines ils)
-                     (Ref{ key = Key ils
-                         , fallback = literal "[" <> ils <> literal "]" })
+mkRefLink ils = Link (Label ils)
+                (Ref{ key = Key ils , fallback = literal "[" <> ils <> literal "]" })
 
 pReferenceLink :: P Inlines
 pReferenceLink = try $ do
@@ -269,7 +275,7 @@ pBlocks :: P Blocks
 pBlocks = mconcat <$> pBlock `sepEndBy` pNewlines
 
 pBlock :: P Blocks
-pBlock = choice [pQuote, pCode, pList, pReference, pPara]
+pBlock = choice [pQuote, pCode, pList, pReference, pHeader, pPara]
 
 pBlank :: P Blocks
 pBlank = mempty <$ pNewlines
@@ -281,6 +287,30 @@ pQuote :: P Blocks
 pQuote = quote <$> try (quoteStart
    *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
     where quoteStart = try $ nonindentSpace *> char '>'
+
+pHeader :: P Blocks
+pHeader = pHeaderSetext <|> pHeaderATX
+
+setextChar :: P Char
+setextChar = char '=' <|> char '-'
+
+pHeaderSetext :: P Blocks
+pHeaderSetext = try $ do
+  -- lookahead to speed up parsing
+  lookAhead $ skipMany nonnl *> pNewline *> setextChar
+  ils <- toInlines <$> many1Till pInline newline
+  c <- setextChar
+  count 2 $ char c
+  let level = if c == '=' then 1 else 2
+  lookAhead spnl
+  return $ header level ils
+
+pHeaderATX :: P Blocks
+pHeaderATX = try $ do
+  level <- Prelude.length <$> many1 (char '#')
+  sps
+  let closeATX = try $ skipMany (char '#') *> lookAhead spnl
+  header level <$> toInlines <$> many1Till pInline closeATX
 
 pList :: P Blocks
 pList = pBulletList <|> pOrderedList
@@ -330,7 +360,7 @@ nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
   where onesp = () <$ char ' '
 
 anyLine :: P Text
-anyLine = T.pack <$> many (satisfy (/='\n'))
+anyLine = T.pack <$> many nonnl
 
 pCode :: P Blocks
 pCode  = try $ do
@@ -367,5 +397,5 @@ pRefTitle :: P Text
 pRefTitle =  pRefTitleWith '\'' '\''
          <|> pRefTitleWith '"' '"'
          <|> pRefTitleWith '(' ')'
-  where pRefTitleWith start end = T.pack <$> (char start *> manyTill (satisfy (/='\n'))
+  where pRefTitleWith start end = T.pack <$> (char start *> manyTill nonnl
              (try $ char end *> lookAhead (() <$ spnl <|> eof)))
