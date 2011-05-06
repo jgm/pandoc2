@@ -139,11 +139,11 @@ emph = inline . Emph
 strong :: Inlines -> Inlines
 strong = inline . Strong
 
-link :: Inlines -> Text -> Source -> Inlines
-link lab tit src = inline $ Link (Label lab) src
+link :: Inlines -> Source -> Inlines
+link lab src = inline $ Link (Label lab) src
 
-image :: Inlines -> Text -> Source -> Inlines
-image lab tit src = inline $ Image (Label lab) src
+image :: Inlines -> Source -> Inlines
+image lab src = inline $ Image (Label lab) src
 
 verbatim :: Text -> Inlines
 verbatim = verbatimAttr nullAttr

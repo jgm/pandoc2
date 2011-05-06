@@ -37,7 +37,7 @@ x proper escaping for URLs
 x setext headers
 x atx headers
 x HTML writer using blaze
-_ hrule
+x hrule
 _ autolinks
 _ explicit links
 _ image (ref & explicit)
@@ -168,7 +168,7 @@ parseWith p t = do
 
 pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
-                   pLink, pEscaped, pSymbol ]
+                   pLink, pAutolink, pEscaped, pSymbol ]
 
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
@@ -188,6 +188,16 @@ pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
 
 pLink :: P Inlines
 pLink = pReferenceLink
+
+pAutolink :: P Inlines
+pAutolink = mkLink <$> uri
+  where mkLink u = link (txt u) Source{ location = escapeURI u, title = "" }
+
+uri :: P Text
+uri = T.pack
+  <$> try (char '<' *> lookAhead protocol *> manyTill nonnl (char '>'))
+    where protocol = choice $ map (try . string)
+           ["http:", "https:", "ftp:", "file:", "mailto:", "news:", "telnet:" ]
 
 many1Till p q = do
   x <- p
