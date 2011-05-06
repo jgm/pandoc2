@@ -9,6 +9,7 @@ import Data.Traversable
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Data
+import Data.Char (toLower)
 import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import qualified Data.Foldable as F
@@ -24,32 +25,7 @@ import qualified Data.Text.Encoding as E
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Data.Generics.Uniplate.Operations (transformBi)
 import Network.URI ( escapeURIString, isAllowedInURI )
-
-{- TODO:
-
-x references (populate sReferences in state)
-x emph
-x strong
-x escapes
-x special chars
-x block parser for random whitespace eg. at beg and end, returns mempty?
-x proper escaping for URLs
-x setext headers
-x atx headers
-x HTML writer using blaze
-x hrule
-x autolinks
-x image (ref & explicit)
-x verbatim
-x image "TBD" in HTML.hs
-x explicit links (finish pSource, pTitle - use peg-markdown)
-_ raw HTML inline
-_ raw HTML blocks
-x executable
-_ tests
-_ benchmarks
-
--}
+import Text.HTML.TagSoup
 
 data PState = PState {
                   sGetFile    :: FilePath -> P Text
@@ -172,7 +148,7 @@ parseWith p t = do
 
 pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
-                   pImage, pLink, pAutolink, pEscaped, pSymbol ]
+                   pImage, pLink, pAutolink, pEscaped, pHtmlInline, pSymbol ]
 
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
@@ -322,7 +298,8 @@ pBlocks :: P Blocks
 pBlocks = mconcat <$> pBlock `sepEndBy` pNewlines
 
 pBlock :: P Blocks
-pBlock = choice [pQuote, pCode, pHrule, pList, pReference, pHeader, pPara]
+pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
+                 pHeader, pHtmlBlock, pPara]
 
 pBlank :: P Blocks
 pBlank = mempty <$ pNewlines
@@ -454,3 +431,54 @@ pRefTitle =  pRefTitleWith '\'' '\''
          <|> pRefTitleWith '(' ')'
   where pRefTitleWith start end = T.pack <$> (char start *> manyTill nonnl
              (try $ char end *> lookAhead (() <$ spnl <|> eof)))
+
+pQuoted :: P Text
+pQuoted = T.pack <$> (quoteChar >>= \c -> char c *> manyTill anyChar (char c))
+
+pHtmlTag :: P ([Tag String], Text)
+pHtmlTag = try $ do
+  char '<'
+  x <- manyTill anyChar (char '>')
+  let t = '<' : x ++ ">"
+  let tags = parseTags t
+  return (tags, T.pack t)
+
+pHtmlInline :: P Inlines
+pHtmlInline = do
+  (_tags,t) <- pHtmlTag
+  return $ rawInline (Format "html") t
+
+blockTags :: [String]
+blockTags = [ "address", "blockquote", "center", "dir", "div",
+              "dl", "fieldset", "form", "h1", "h2", "h3",
+              "h4", "h5", "h6", "menu", "noframes", "noscript",
+              "ol", "p", "pre", "table", "ul", "dd", "dt",
+              "frameset", "li", "tbody", "td", "tfoot", "th",
+              "thead", "tr", "script" ]
+
+pHtmlBlock :: P Blocks
+pHtmlBlock = rawBlock (Format "html") <$> pHtmlBlockRaw
+
+pHtmlBlockRaw :: P Text
+pHtmlBlockRaw = try $ do
+  pos <- getPosition
+  guard $ sourceColumn pos == 1
+  (t:ts, x) <- pHtmlTag
+  guard $ isTagOpen t
+  tagname <- case t of
+              (TagOpen s _) | map toLower s `elem` blockTags -> return s
+              _             -> mzero
+  let chunk = notFollowedBy (pTagClose tagname) *> (pHtmlBlockRaw
+                <|> T.pack <$> (many1 (satisfy (/='<')) <|> count 1 anyChar))
+  case ts of
+       [TagClose s] | map toLower s == tagname -> return x
+       _ -> do ws <- mconcat <$> many chunk
+               w <- pTagClose tagname
+               return $ x <> ws <> w
+
+pTagClose :: String -> P Text
+pTagClose tagname = try $ do
+  (t,n) <- pHtmlTag
+  case t of
+    [TagClose m] | map toLower m == tagname -> return n
+    _ -> mzero
