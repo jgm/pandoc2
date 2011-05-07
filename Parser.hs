@@ -337,25 +337,16 @@ pHeaderATX = try $ do
   header level <$> toInlines <$> many1Till pInline closeATX
 
 pList :: P Blocks
-pList = pBulletList <|> pOrderedList
-
-pBulletList :: P Blocks
-pBulletList = do
-  (tights, bs) <- unzip <$> many1 (pListItem bullet)
-  return $ if and tights
-              then bulletListTight bs
-              else bulletListLoose bs
-
-pOrderedList :: P Blocks
-pOrderedList = do
-  (tights, bs) <- unzip <$> many1 (pListItem enum)
-  return $ if and tights
-              then orderedListTight bs
-              else orderedListLoose bs
+pList = do
+  (mark, style) <- lookAhead
+                 $ ((enum, Ordered) <$ enum) <|> ((bullet, Bullet) <$ bullet)
+  (tights, bs) <- unzip <$> many1 (pListItem mark)
+  return $ block $ List ListAttr{ listTight = and tights, listStyle = style } bs
 
 pListItem :: P a -> P (Bool, Blocks) -- True = suitable for tight list
 pListItem start = try $ do
   n <- option 0 pNewlines
+  nonindentSpace
   start
   withBlockSep (indentSpace <|> lookAhead spnl) $
     withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
@@ -375,10 +366,10 @@ listStart :: P Char
 listStart = bullet <|> enum
 
 bullet :: P Char
-bullet = try $ nonindentSpace *> oneOf "-+*" <* spaceChar
+bullet = try $ oneOf "-+*" <* spaceChar
 
 enum :: P Char
-enum = try $ nonindentSpace *> (digit <|> char '#') <* char '.' <* spaceChar
+enum = try $ (digit <|> char '#') <* char '.' <* spaceChar
 
 indentSpace :: P ()
 indentSpace = try $  (count 4 (char ' ') >> return ())
