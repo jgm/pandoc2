@@ -1,15 +1,5 @@
-So to populate the symbol list we need to:
+- list
 
- 1. Make sure the language grammar assigns a name to what we want to show.
+- list2
 
-  2. Create a bundle preferences item that sets `showInSymbolList` to `1` and
-  uses a scope selector that matches the symbols we want to have in the symbol
-  list.
-
-  In addition to the `showInSymbolList` setting there is a
-  `symbolTransformation` setting which is one or more regular expression
-  substitutions which are performed on the text extracted. The value of this
-  setting should be: `s/«regexp»/«format»/«options»` optionally followed by
-  `;` and more substitutions. It is also possible to put comments in the
-  value, these start with `#` and end at the next newline.
-
+    continued
