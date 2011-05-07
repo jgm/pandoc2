@@ -415,7 +415,7 @@ pReference = try $ do
   char ':'
   spOptNl
   loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
-  tit <- option "" $ spOptNl *> pRefTitle
+  tit <- option "" $ try $ spOptNl *> pRefTitle
   let src = Source{ location = escapeURI loc, title = tit }
   modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
   return mempty
