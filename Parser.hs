@@ -148,7 +148,7 @@ parseWith p t = do
 
 pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
-                   pImage, pLink, pAutolink, pEscaped, pHtmlInline, pSymbol ]
+                   pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSymbol ]
 
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
@@ -441,6 +441,15 @@ pHtmlTag = try $ do
   let t = '<' : x ++ ">"
   let tags = parseTags t
   return (tags, T.pack t)
+
+pEntity :: P Inlines
+pEntity = try $ do
+  char '&'
+  x <- manyTill nonSpaceChar (char ';')
+  let t = '&' : x ++ ";"
+  case parseTags t of
+       [TagText [c]] -> return (txt $ T.singleton c)
+       _             -> mzero
 
 pHtmlInline :: P Inlines
 pHtmlInline = do
