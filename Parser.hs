@@ -80,7 +80,7 @@ withBlockSep :: P a -> P b -> P b
 withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
 
 pBlockSep :: P ()
-pBlockSep = try (getState >>= sequenceA . sBlockSep) >> getPosition >>= logM WARNING . showText >> return ()
+pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
 pNewlines :: P Int
 pNewlines = Prelude.length <$> many1 pNewline
@@ -350,7 +350,8 @@ pListItem start = try $ do
   start
   withBlockSep (indentSpace <|> lookAhead spnl) $
     withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
-      Blocks bs <- pBlocks
+      Blocks bs <- mconcat <$> (notFollowedBy (try $ sps *> newline) >> pBlock)
+                     `sepBy` pNewlines
       if n > 1
          then return (False, Blocks bs)
          else case viewl bs of
