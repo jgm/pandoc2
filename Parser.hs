@@ -80,7 +80,7 @@ withBlockSep :: P a -> P b -> P b
 withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
 
 pBlockSep :: P ()
-pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
+pBlockSep = try (getState >>= sequenceA . sBlockSep) >> getPosition >>= logM WARNING . showText >> return ()
 
 pNewlines :: P Int
 pNewlines = Prelude.length <$> many1 pNewline
