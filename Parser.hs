@@ -14,7 +14,7 @@ import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import qualified Data.Foldable as F
 import Data.Generics
-import Text.Parsec
+import Text.Parsec hiding (sepBy)
 import Control.Monad.Identity (Identity)
 import Control.Monad
 import Control.Arrow ((***))
@@ -275,7 +275,7 @@ trimInlines :: Inlines -> Inlines
 trimInlines = Inlines . dropWhileL (== Sp) . dropWhileR (== Sp) . unInlines
 
 pDoc :: P Blocks
-pDoc = skipMany pNewline *> pBlocks <* eof >>= resolveRefs
+pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
 
 resolveRefs :: Blocks -> P Blocks
 resolveRefs bs = do
@@ -295,7 +295,7 @@ handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
         go x = singleton x
 
 pBlocks :: P Blocks
-pBlocks = mconcat <$> pBlock `sepEndBy` pNewlines
+pBlocks = mconcat <$> pBlock `sepBy` pNewlines
 
 pBlock :: P Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
@@ -341,30 +341,35 @@ pList = pBulletList <|> pOrderedList
 
 pBulletList :: P Blocks
 pBulletList = do
-  (tight, bs) <- listSep (pListItem bullet)
-  return $ if tight
+  (tights, bs) <- unzip <$> many1 (pListItem bullet)
+  return $ if and tights
               then bulletListTight bs
               else bulletListLoose bs
 
 pOrderedList :: P Blocks
 pOrderedList = do
-  (tight, bs) <- listSep (pListItem enum)
-  return $ if tight
+  (tights, bs) <- unzip <$> many1 (pListItem enum)
+  return $ if and tights
               then orderedListTight bs
               else orderedListLoose bs
 
-listSep :: P Blocks -> P (Bool, [Blocks])
-listSep p = do
-  x <- p
-  res <- many $ try $ do m <- pNewlines
-                         n <- p
-                         return (m, n)
-  let (ts, xs) = unzip res
-  return (all (== 1) ts, x:xs)
-
-pListItem :: P a -> P Blocks
-pListItem start = try $ start *> withBlockSep (indentSpace <|> lookAhead spnl)
-  (withEndline (notFollowedBy $ skipMany spaceChar *> listStart) pBlocks)
+pListItem :: P a -> P (Bool, Blocks) -- True = suitable for tight list
+pListItem start = try $ do
+  n <- option 0 pNewlines
+  start
+  withBlockSep (indentSpace <|> lookAhead spnl) $
+    withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
+      Blocks bs <- pBlocks
+      if n > 1
+         then return (False, Blocks bs)
+         else case viewl bs of
+                   (Para _ :< seq) ->
+                        case viewl seq of
+                              EmptyL               -> return (True, Blocks bs)
+                              (List _ _ :< s)
+                                 |  Seq.null s     -> return (True, Blocks bs)
+                              _                    ->  return (False, Blocks bs)
+                   _                -> return (False, Blocks bs)
 
 listStart :: P Char
 listStart = bullet <|> enum
@@ -391,7 +396,7 @@ pCode  = try $ do
   indentSpace
   x <- anyLine
   pNewline
-  xs <- sepBy' ((indentSpace <|> lookAhead spnl) *> anyLine) pNewline
+  xs <- sepBy ((indentSpace <|> lookAhead spnl) *> anyLine) pNewline
   return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
          $ Prelude.reverse (x:xs)
 
@@ -404,8 +409,9 @@ pHrule = try $ do
   lookAhead spnl
   return hrule
 
-sepBy' :: P a -> P b -> P [a]
-sepBy' p sep = do
+-- redefined to include a 'try'
+sepBy :: P a -> P b -> P [a]
+sepBy p sep = do
   x <- p
   xs <- many $ try (sep *> p)
   return (x:xs)
