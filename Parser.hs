@@ -198,11 +198,11 @@ pImage = try $ do
 pLink :: P Inlines
 pLink = try $ do
   (Link lab x) <- mkRefLink <$> pBracketedInlines
-  s <- many spaceChar
-  pExplicitLink lab <|> pReferenceLink lab x s
+  pExplicitLink lab <|> pReferenceLink lab x
 
 pExplicitLink :: Label -> P Inlines
 pExplicitLink lab = try $ do
+  sps
   char '('
   sps
   src <- pSource
@@ -226,8 +226,8 @@ pTitle = do
   let end = char c *> lookAhead (sps *> char ')')
   T.pack <$> manyTill anyChar end
 
-pReferenceLink :: Label -> Source -> String -> P Inlines
-pReferenceLink lab x s = try $ do
+pReferenceLink :: Label -> Source -> P Inlines
+pReferenceLink lab x = try $ do
   (k, fall) <- option (key x, fallback x) $ try $ do
                    s <- option mempty $ sp <$ many1 spaceChar
                    (Link _ y) <- mkRefLink <$> pBracketedInlines
