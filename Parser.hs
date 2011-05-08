@@ -282,9 +282,9 @@ pEmph :: P Inlines
 pEmph = emph <$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
     where starStart = char '*' *> notFollowedBy (spaceChar <|> newline)
-          starEnd   = char '*'
+          starEnd   = notFollowedBy' pStrong *> char '*'
           ulStart   = char '_' *> notFollowedBy (spaceChar <|> newline)
-          ulEnd     = char '_'
+          ulEnd     = notFollowedBy' pStrong *> char '_'
 
 pStrong :: P Inlines
 pStrong = strong <$>
