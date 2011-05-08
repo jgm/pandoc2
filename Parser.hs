@@ -257,8 +257,7 @@ pTxt = do
   return $ literal $ T.pack (x:xs)
 
 pInlinesBetween :: P a -> P b -> P Inlines
-pInlinesBetween start end =
-  mconcat <$> try (start *> manyTill pInline end)
+pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
 
 pFours :: P Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
