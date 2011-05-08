@@ -367,7 +367,7 @@ pListItem start = try $ do
   start
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
-      Blocks bs <- mconcat <$> (notFollowedBy (try $ sps *> newline) >> pBlock)
+      Blocks bs <- mconcat <$> (notFollowedBy spnl >> pBlock)
                      `sepBy` pNewlines
       if n > 1
          then return (False, Blocks bs)
