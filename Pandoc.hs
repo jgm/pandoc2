@@ -4,5 +4,6 @@ module Pandoc ( module Definition
 where
 import Definition
 import Parser
+import Builder
 import HTML
 
