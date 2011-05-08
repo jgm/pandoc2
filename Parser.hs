@@ -202,12 +202,10 @@ pLink = try $ do
 
 pExplicitLink :: Label -> P Inlines
 pExplicitLink lab = try $ do
-  sps
   char '('
   sps
   src <- pSource
-  spOptNl
-  tit <- option "" pTitle
+  tit <- option "" $ try $ spOptNl *> pTitle
   sps
   char ')'
   return $ inline $ Link lab Source{ location = escapeURI src, title = tit }
@@ -215,7 +213,7 @@ pExplicitLink lab = try $ do
 pSource :: P Text
 pSource = T.pack
        <$> ((char '<' *> manyTill nonnl (char '>'))
-       <|> (notFollowedBy quoteChar *> many nonSpaceChar))
+       <|> many (notFollowedBy (quoteChar <|> char ')') *> nonSpaceChar))
 
 quoteChar :: P Char
 quoteChar = satisfy $ \c -> c == '\'' || c == '"'
