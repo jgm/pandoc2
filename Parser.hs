@@ -453,7 +453,13 @@ pEntity = try $ do
 
 pHtmlInline :: P Inlines
 pHtmlInline = do
-  (_tags,t) <- pHtmlTag
+  (tags,t) <- pHtmlTag
+  result <- case tags of
+                 [TagOpen _ _]              -> return t
+                 [TagClose _]               -> return t
+                 [TagOpen _ _, TagClose _]  -> return t
+                 [TagComment _]             -> return t
+                 _                          -> mzero
   return $ rawInline (Format "html") t
 
 blockTags :: [String]
