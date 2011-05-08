@@ -437,7 +437,7 @@ pQuoted = T.pack <$> (quoteChar >>= \c -> char c *> manyTill anyChar (char c))
 pHtmlTag :: P ([Tag String], Text)
 pHtmlTag = try $ do
   char '<'
-  x <- manyTill anyChar (char '>')
+  x <- manyTill nonnl (char '>')
   let t = '<' : x ++ ">"
   let tags = parseTags t
   return (tags, T.pack t)
