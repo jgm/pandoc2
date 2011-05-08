@@ -110,6 +110,9 @@ sps = skipMany spaceChar
 spnl :: P ()
 spnl = try $ sps <* newline
 
+eol :: P ()
+eol = sps *> lookAhead (() <$ newline <|> eof)
+
 spOptNl :: P ()
 spOptNl = try $ sps <* optional (pNewline <* sps)
 
@@ -323,7 +326,7 @@ pHeaderSetext = try $ do
   ils <- toInlines <$> many1Till pInline newline
   c <- setextChar
   skipMany (char c)
-  lookAhead spnl
+  eol
   let level = if c == '=' then 1 else 2
   return $ header level ils
 
@@ -331,7 +334,7 @@ pHeaderATX :: P Blocks
 pHeaderATX = try $ do
   level <- Prelude.length <$> many1 (char '#')
   sps
-  let closeATX = try $ skipMany (char '#') *> lookAhead spnl
+  let closeATX = try $ skipMany (char '#') *> eol
   header level <$> toInlines <$> many1Till pInline closeATX
 
 pList :: P Blocks
@@ -346,7 +349,7 @@ pListItem start = try $ do
   n <- option 0 pNewlines
   nonindentSpace
   start
-  withBlockSep (indentSpace <|> lookAhead spnl) $
+  withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
       Blocks bs <- mconcat <$> (notFollowedBy (try $ sps *> newline) >> pBlock)
                      `sepBy` pNewlines
@@ -386,7 +389,7 @@ pCode  = try $ do
   indentSpace
   x <- anyLine
   pNewline
-  xs <- sepBy ((indentSpace <|> lookAhead spnl) *> anyLine) pNewline
+  xs <- sepBy ((indentSpace <|> eol) *> anyLine) pNewline
   return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
          $ Prelude.reverse (x:xs)
 
@@ -396,7 +399,7 @@ pHrule = try $ do
   c <- satisfy $ \x -> x == '*' || x == '-' || x == '_'
   count 2 $ sps *> char c
   skipMany $ sps *> char c
-  lookAhead spnl
+  eol
   return hrule
 
 -- redefined to include a 'try'
@@ -414,7 +417,7 @@ pReference = try $ do
   spOptNl
   loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
   tit <- option "" $ try $ spOptNl *> pRefTitle
-  lookAhead spnl
+  eol
   let src = Source{ location = escapeURI loc, title = tit }
   modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
   return mempty
