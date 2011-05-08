@@ -311,7 +311,7 @@ pPara = para <$> pInlines
 pQuote :: P Blocks
 pQuote = quote <$> try (quoteStart
    *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
-    where quoteStart = try $ nonindentSpace *> char '>'
+    where quoteStart = try $ nonindentSpace *> char '>' *> optional spaceChar
 
 pHeader :: P Blocks
 pHeader = pHeaderSetext <|> pHeaderATX
