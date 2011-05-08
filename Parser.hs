@@ -174,17 +174,26 @@ pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
                   <|> return sp)
 
 pAutolink :: P Inlines
-pAutolink = mkLink <$> pUri
+pAutolink = mkLink <$> pUri <|> mkEmail <$> pEmail
   where mkLink u = link (txt u) Source{ location = escapeURI u, title = "" }
+        mkEmail u = link (txt u) Source{ location = escapeURI ("mailto:" <> u),
+                                          title = "" }
+
+pEmail :: P Text
+pEmail = try $ do
+  char '<'
+  xs <- many1Till nonSpaceChar (char '@')
+  ys <- manyTill nonnl (char '>')
+  return $ T.pack xs <> T.singleton '@' <> T.pack ys
 
 pUri :: P Text
 pUri = try $ do
   char '<'
-  xs <- manyTill nonSpaceChar (char ':')
+  xs <- many1Till nonSpaceChar (char ':')
   guard $ map toLower xs `elem` ["http", "https", "ftp",
                                  "file", "mailto", "news", "telnet" ]
   ys <- manyTill nonnl (char '>')
-  return $ T.pack xs <> ":" <> T.pack ys
+  return $ T.pack xs <> T.singleton ':' <> T.pack ys
 
 many1Till p q = do
   x <- p
