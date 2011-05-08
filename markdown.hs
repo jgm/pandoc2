@@ -1,9 +1,9 @@
 import Pandoc
-import Data.Text.IO as T
 import Text.Blaze.Renderer.Utf8
 import Data.ByteString as B
 import System.Environment
 import Data.Text (Text)
+import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Data.Text as T
 
 main = do
@@ -11,8 +11,9 @@ main = do
   let convert x = parseWith pDoc x
                   >>= renderHtmlToByteStringIO B.putStr . blocksToHtml
   case args of
-       [] -> T.getContents >>= convert . convertTabs
-       _  -> mapM_ (\f -> T.readFile f >>= convert . convertTabs) args
+       [] -> B.getContents >>= convert . convertTabs. decodeUtf8
+       _  -> mapM_
+             (\f -> B.readFile f >>= convert . convertTabs . decodeUtf8) args
 
 convertTabs :: Text -> Text
 convertTabs = T.unlines . Prelude.map convertTabL . T.lines
