@@ -437,16 +437,11 @@ pQuoted = T.pack <$> (quoteChar >>= \c -> char c *> manyTill anyChar (char c))
 pHtmlTag :: P ([Tag String], Text)
 pHtmlTag = try $ do
   char '<'
-  x <- manyTill anyChar (char '>')
-  let t = '<' : x ++ ">"
-  let tags = parseTags t
-  t <- case tags of
-            [TagOpen _ _]             -> return t
-            [TagClose _]              -> return t
-            [TagOpen _ _, TagClose _] -> return t
-            [TagComment _]            -> return t
-            _                         -> mzero
-  return (tags, T.pack t)
+  xs <- manyTill anyChar (char '>')
+  let t = '<' : xs ++ ">"
+  case parseTags t of
+       (y:_) | isTagText y   -> mzero
+       ys                    -> return (ys, T.pack t)
 
 pEntity :: P Inlines
 pEntity = try $ do
