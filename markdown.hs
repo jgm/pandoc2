@@ -2,10 +2,10 @@ import Pandoc
 import Text.Blaze.Renderer.Utf8
 import Data.ByteString as B
 import System.Environment
-import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import Data.Text.Encoding (decodeUtf8)
 import Data.Text as T
 
+main :: IO ()
 main = do
   args <- getArgs
   let convert x = parseWith pDoc x
