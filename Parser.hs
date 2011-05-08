@@ -189,10 +189,6 @@ pBracketedInlines :: P Inlines
 pBracketedInlines = try $
   char '[' *> (toInlines <$> manyTill pInline (char ']'))
 
-mkRefLink :: Inlines -> Inline
-mkRefLink ils = Link (Label ils)
-       (Ref{ key = Key ils , fallback = literal "[" <> ils <> literal "]" })
-
 pImage :: P Inlines
 pImage = try $ do
   char '!'
@@ -201,8 +197,21 @@ pImage = try $ do
 
 pLink :: P Inlines
 pLink = try $ do
-  (Link lab x) <- mkRefLink <$> pBracketedInlines
-  pExplicitLink lab <|> pReferenceLink lab x
+  ils <- pBracketedInlines
+  guard $ ils /= mempty
+  let lab = Label ils
+  let ref = Ref{ key = Key ils, fallback = literal "[" <> ils <> literal "]" }
+  pExplicitLink lab <|> pReferenceLink lab ref
+
+pReferenceLink :: Label -> Source -> P Inlines
+pReferenceLink lab x = try $ do
+  (k, fall) <- option (key x, fallback x) $ try $ do
+                   s <- option mempty $ sp <$ many1 spaceChar
+                   ils <- pBracketedInlines
+                   let k' = if ils == mempty then key x else Key ils
+                   let f' = fallback x <> s <> literal "[" <> ils <> literal "]"
+                   return (k',f')
+  return $ inline $ Link lab Ref{ key = k, fallback = fall }
 
 pExplicitLink :: Label -> P Inlines
 pExplicitLink lab = try $ do
@@ -227,16 +236,6 @@ pTitle = do
   c <- quoteChar
   let end = char c *> lookAhead (sps *> char ')')
   T.pack <$> manyTill anyChar end
-
-pReferenceLink :: Label -> Source -> P Inlines
-pReferenceLink lab x = try $ do
-  (k, fall) <- option (key x, fallback x) $ try $ do
-                   s <- option mempty $ sp <$ many1 spaceChar
-                   (Link _ y) <- mkRefLink <$> pBracketedInlines
-                   let k' = if key y == Key mempty then key x else key y
-                   let f' = fallback x <> s <> fallback y
-                   return (k',f')
-  return $ inline $ Link lab Ref{ key = k, fallback = fall }
 
 pTxt :: P Inlines
 pTxt = do
