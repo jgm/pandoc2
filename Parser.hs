@@ -206,7 +206,8 @@ pLink = try $ do
 pReferenceLink :: Label -> Source -> P Inlines
 pReferenceLink lab x = try $ do
   (k, fall) <- option (key x, fallback x) $ try $ do
-                   s <- option mempty $ sp <$ many1 spaceChar
+                   s <- option mempty $ sp <$
+                           ((pNewline *> sps) <|> skipMany1 spaceChar)
                    ils <- pBracketedInlines
                    let k' = if ils == mempty then key x else Key ils
                    let f' = fallback x <> s <> literal "[" <> ils <> literal "]"
