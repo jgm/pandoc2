@@ -386,12 +386,10 @@ anyLine = T.pack <$> many nonnl
 
 pCode :: P Blocks
 pCode  = try $ do
-  indentSpace
-  x <- anyLine
-  pNewline
+  notFollowedBy eol
   xs <- sepBy ((indentSpace <|> eol) *> anyLine) pNewline
   return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
-         $ Prelude.reverse (x:xs)
+         $ Prelude.reverse xs
 
 pHrule :: P Blocks
 pHrule = try $ do
