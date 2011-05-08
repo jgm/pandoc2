@@ -259,6 +259,17 @@ pTxt = do
 pInlinesBetween :: P a -> P b -> P Inlines
 pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
 
+-- | A more general form of @notFollowedBy@.  This one allows any~
+-- type of parser to be specified, and succeeds only if that parser fails.
+-- It does not consume any input.
+notFollowedBy' :: (Stream s m t, Show b)
+               => ParsecT s u m b -> ParsecT s u m ()
+notFollowedBy' p  = try $ join $  do  a <- try p
+                                      return (unexpected (show a))
+                                  <|>
+                                  return (return ())
+-- (This version due to Andrew Pimlott on the Haskell mailing list.)
+
 pFours :: P Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   x <- (char '*' <|> char '_')
