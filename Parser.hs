@@ -359,12 +359,13 @@ pList = do
 pListItem :: P a -> P (Bool, Blocks) -- True = suitable for tight list
 pListItem start = try $ do
   n <- option 0 pNewlines
-  nonindentSpace
   start
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
       option ' ' $ char ' ' *> (option ' ' $ char ' ')
-      Blocks bs <- mconcat <$> pBlock `sepBy` (pNewlines >> notFollowedBy spnl)
+      Blocks bs <- mconcat
+                <$> (pBlock `sepBy` (pNewlines >> notFollowedBy spnl))
+                   <|> return mempty
       if n > 1
          then return (False, Blocks bs)
          else case viewl bs of
@@ -381,6 +382,7 @@ listStart = bullet <|> enum
 
 bullet :: P Char
 bullet = try $ do
+  nonindentSpace
   b <- satisfy $ \c -> c == '-' || c == '+' || c == '*'
   spaceChar <|> lookAhead (newline <|> '\n' <$ eof)
   -- not an hrule
@@ -389,7 +391,7 @@ bullet = try $ do
   return b
 
 enum :: P Char
-enum = try $ (digit <|> char '#') <* char '.' <*
+enum = try $ nonindentSpace *> (digit <|> char '#') <* char '.' <*
               (spaceChar <|> lookAhead (newline <|> '\n' <$ eof))
 
 indentSpace :: P ()
