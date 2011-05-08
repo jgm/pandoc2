@@ -211,7 +211,7 @@ pLink = try $ do
   ils <- pBracketedInlines
   guard $ ils /= mempty
   let lab = Label ils
-  let ref = Ref{ key = Key ils, fallback = literal "[" <> ils <> literal "]" }
+  let ref = Ref{ key = Key ils, fallback = txt "[" <> ils <> txt "]" }
   pExplicitLink lab <|> pReferenceLink lab ref
 
 pReferenceLink :: Label -> Source -> P Inlines
@@ -221,7 +221,7 @@ pReferenceLink lab x = try $ do
                            ((pNewline *> sps) <|> skipMany1 spaceChar)
                    ils <- pBracketedInlines
                    let k' = if ils == mempty then key x else Key ils
-                   let f' = fallback x <> s <> literal "[" <> ils <> literal "]"
+                   let f' = fallback x <> s <> txt "[" <> ils <> txt "]"
                    return (k',f')
   return $ inline $ Link lab Ref{ key = k, fallback = fall }
 
@@ -254,7 +254,7 @@ pTxt = do
   x <- letter
   let txtchar = letter <|> (try $ char '_' <* lookAhead txtchar)
   xs <- many txtchar
-  return $ literal $ T.pack (x:xs)
+  return $ txt $ T.pack (x:xs)
 
 pInlinesBetween :: P a -> P b -> P Inlines
 pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
@@ -276,7 +276,7 @@ pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   y <- char x
   z <- char x
   rest <- many1 (char x)
-  return $ literal $ T.pack $ x : y : z : rest
+  return $ txt $ T.pack $ x : y : z : rest
 
 pEmph :: P Inlines
 pEmph = emph <$>

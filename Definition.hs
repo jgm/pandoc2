@@ -102,7 +102,7 @@ instance Monoid Inlines where
                           _                  -> xs' |> x |> y
 
 instance IsString Inlines where
-  fromString = txt . T.pack
+  fromString = Inlines . fromList . intersperse Sp . map Txt . T.words . T.pack
 
 newtype Blocks = Blocks { unBlocks :: Seq Block }
                 deriving (Data, Ord, Eq, Typeable, Monoid)
@@ -119,13 +119,8 @@ instance Read Blocks where
 inline :: Inline -> Inlines
 inline = Inlines . singleton
 
--- | Convert a 'Text' to 'Inlines', treating interword spaces as 'Sp's.
--- If you want a 'Str' with literal spaces, use 'literal'.
-txt :: T.Text -> Inlines
-txt = Inlines . fromList . intersperse Sp . map Txt . T.words
-
-literal :: Text -> Inlines
-literal = inline . Txt
+txt :: Text -> Inlines
+txt = inline . Txt
 
 sp :: Inlines
 sp = inline Sp
