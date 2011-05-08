@@ -187,7 +187,7 @@ many1Till p q = do
 
 pBracketedInlines :: P Inlines
 pBracketedInlines = try $
-  char '[' *> (toInlines <$> many1Till pInline (char ']'))
+  char '[' *> (toInlines <$> manyTill pInline (char ']'))
 
 mkRefLink :: Inlines -> Inline
 mkRefLink ils = Link (Label ils)
