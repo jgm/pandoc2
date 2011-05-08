@@ -389,7 +389,9 @@ nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
   where onesp = () <$ char ' '
 
 anyLine :: P Text
-anyLine = T.pack <$> many nonnl
+anyLine = cleanup . T.pack <$> many nonnl
+  where cleanup t = if T.all iswhite t then T.empty else t
+        iswhite c = c == ' ' || c == '\t'
 
 pCode :: P Blocks
 pCode  = try $ do
