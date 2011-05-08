@@ -386,10 +386,10 @@ anyLine = T.pack <$> many nonnl
 
 pCode :: P Blocks
 pCode  = try $ do
-  notFollowedBy eol
-  xs <- sepBy ((indentSpace <|> eol) *> anyLine) pNewline
+  x <- indentSpace *> anyLine
+  xs <- option [] $ pNewline *> sepBy ((indentSpace <|> eol) *> anyLine) pNewline
   return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
-         $ Prelude.reverse xs
+         $ Prelude.reverse (x:xs)
 
 pHrule :: P Blocks
 pHrule = try $ do
@@ -439,6 +439,12 @@ pHtmlTag = try $ do
   x <- manyTill anyChar (char '>')
   let t = '<' : x ++ ">"
   let tags = parseTags t
+  t <- case tags of
+            [TagOpen _ _]             -> return t
+            [TagClose _]              -> return t
+            [TagOpen _ _, TagClose _] -> return t
+            [TagComment _]            -> return t
+            _                         -> mzero
   return (tags, T.pack t)
 
 pEntity :: P Inlines
@@ -451,15 +457,7 @@ pEntity = try $ do
        _             -> mzero
 
 pHtmlInline :: P Inlines
-pHtmlInline = do
-  (tags,t) <- pHtmlTag
-  result <- case tags of
-                 [TagOpen _ _]              -> return t
-                 [TagClose _]               -> return t
-                 [TagOpen _ _, TagClose _]  -> return t
-                 [TagComment _]             -> return t
-                 _                          -> mzero
-  return $ rawInline (Format "html") t
+pHtmlInline = rawInline (Format "html") <$> (pHtmlComment <|> snd <$> pHtmlTag)
 
 blockTags :: [String]
 blockTags = [ "address", "blockquote", "center", "dir", "div",
@@ -470,7 +468,13 @@ blockTags = [ "address", "blockquote", "center", "dir", "div",
               "thead", "tr", "script" ]
 
 pHtmlBlock :: P Blocks
-pHtmlBlock = rawBlock (Format "html") <$> pHtmlBlockRaw
+pHtmlBlock = rawBlock (Format "html") <$> (pHtmlComment <|> pHtmlBlockRaw)
+
+pHtmlComment :: P Text
+pHtmlComment = try $ do
+  string "<!--"
+  x <- manyTill anyChar (try $ string "-->")
+  return $ "<!--" <> T.pack x <> "-->"
 
 pHtmlBlockRaw :: P Text
 pHtmlBlockRaw = try $ do
@@ -479,8 +483,8 @@ pHtmlBlockRaw = try $ do
   (t:ts, x) <- pHtmlTag
   guard $ isTagOpen t
   tagname <- case t of
-              (TagOpen s _) | map toLower s `elem` blockTags -> return s
-              _             -> mzero
+              (TagOpen s _)  | map toLower s `elem` blockTags -> return s
+              _              -> mzero
   let chunk = notFollowedBy (pTagClose tagname) *> (pHtmlBlockRaw
                 <|> T.pack <$> (many1 (satisfy (/='<')) <|> count 1 anyChar))
   case ts of
