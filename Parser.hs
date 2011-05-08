@@ -369,8 +369,8 @@ pListItem start = try $ do
          then return (False, Blocks bs)
          else case viewl bs of
                    EmptyL          -> return (True, Blocks bs)
-                   (Para _ :< seq) ->
-                        case viewl seq of
+                   (Para _ :< sq) ->
+                        case viewl sq of
                               EmptyL               -> return (True, Blocks bs)
                               (List _ _ :< s)
                                  |  Seq.null s     -> return (True, Blocks bs)
@@ -433,14 +433,14 @@ sepBy p sep = do
 pReference :: P Blocks
 pReference = try $ do
   nonindentSpace
-  key <- Key <$> pBracketedInlines
+  k <- Key <$> pBracketedInlines
   char ':'
   spOptNl
   loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
   tit <- option "" $ try $ spOptNl *> pRefTitle
   eol
   let src = Source{ location = escapeURI loc, title = tit }
-  modifyState $ \st -> st{ sReferences = M.insert key src $ sReferences st }
+  modifyState $ \st -> st{ sReferences = M.insert k src $ sReferences st }
   return mempty
 
 escapeURI :: Text -> Text
