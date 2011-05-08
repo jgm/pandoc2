@@ -441,13 +441,14 @@ pRefTitle =  pRefTitleWith '\'' '\''
 
 pQuoted :: P String
 pQuoted = try $ quoteChar >>= \c ->
-  manyTill anyChar (char c) >>= \r ->
+  manyTill (nonnl <|> '\n' <$ pNewline) (char c) >>= \r ->
     return (c : r ++ [c])
 
 pHtmlTag :: P ([Tag String], Text)
 pHtmlTag = try $ do
   char '<'
-  xs <- concat <$> manyTill (pQuoted <|> count 1 anyChar) (char '>')
+  xs <- concat
+    <$> manyTill (pQuoted <|> count 1 nonnl <|> "\n" <$ pNewline) (char '>')
   let t = '<' : xs ++ ">"
   case parseTags t of
        (y:_) | isTagText y   -> mzero
