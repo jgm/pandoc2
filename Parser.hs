@@ -368,7 +368,13 @@ listStart :: P Char
 listStart = bullet <|> enum
 
 bullet :: P Char
-bullet = try $ oneOf "-+*" <* spaceChar
+bullet = try $ do
+  b <- satisfy $ \c -> c == '-' || c == '+' || c == '*'
+  spaceChar
+  -- not an hrule
+  notFollowedBy $ sps *> char b *> sps *> char b *> sps
+                 *> skipMany (char b *> sps) *> newline
+  return b
 
 enum :: P Char
 enum = try $ (digit <|> char '#') <* char '.' <* spaceChar
