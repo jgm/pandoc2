@@ -402,7 +402,7 @@ bullet = try $ do
   return b
 
 enum :: P Char
-enum = try $ nonindentSpace *> (digit <|> char '#') <* char '.' <*
+enum = try $ nonindentSpace *> ('#' <$ many1 digit <|> char '#') <* char '.' <*
               (spaceChar <|> lookAhead (newline <|> '\n' <$ eof))
 
 indentSpace :: P ()
