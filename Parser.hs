@@ -235,7 +235,7 @@ quoteChar = satisfy $ \c -> c == '\'' || c == '"'
 pTitle :: P Text
 pTitle = do
   c <- quoteChar
-  let end = char c *> lookAhead (sps *> char ')')
+  let end = try $ char c *> lookAhead (sps *> char ')')
   T.pack <$> manyTill anyChar end
 
 pTxt :: P Inlines
