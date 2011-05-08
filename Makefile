@@ -1,10 +1,11 @@
 OPTS=-O2 -Wall -fno-warn-unused-do-bind
 PROFOPTS=-prof -auto-all -caf-all -fforce-recomp -rtsopts
+SOURCES=markdown.hs Pandoc.hs Parser.hs Definition.hs Builder.hs HTML.hs
 
-markdown: markdown.hs Pandoc.hs Parser.hs Definition.hs HTML.hs
+markdown: ${SOURCES}
 	ghc --make ${OPTS} -o $@ $<
 
-markdown-prof: markdown.hs Pandoc.hs Parser.hs Definition.hs HTML.hs
+markdown-prof: ${SOURCES}
 	ghc --make ${PROFOPTS} -o $@ $<
 
 

@@ -2,6 +2,7 @@
 module Parser
 where
 import Definition
+import Builder
 import Data.Sequence as Seq
 import Data.Monoid
 import qualified Data.Map as M
