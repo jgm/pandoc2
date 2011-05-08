@@ -1,4 +1,4 @@
-import Pandoc
+import Text.Pandoc
 import Text.Blaze.Renderer.Utf8
 import Data.ByteString as B
 import System.Environment

@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings,
    MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
-module Builder
+module Text.Pandoc.Builder
 where
-import Definition
+import Text.Pandoc.Definition
 import Data.Sequence hiding (null)
 import qualified Data.Text as T
 import Data.Text (Text)

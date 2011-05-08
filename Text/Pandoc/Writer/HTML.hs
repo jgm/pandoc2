@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-module HTML where
-import Definition
-import Builder (textify)
+module Text.Pandoc.Writer.HTML where
+import Text.Pandoc.Definition
+import Text.Pandoc.Builder (textify)
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A

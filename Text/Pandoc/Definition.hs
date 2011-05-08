@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings,
    MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
-module Definition
+module Text.Pandoc.Definition
 where
 import Data.Sequence hiding (null)
 import Data.Monoid

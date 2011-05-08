@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, OverloadedStrings, MultiParamTypeClasses,  GeneralizedNewtypeDeriving #-}
-module Parser
+module Text.Pandoc.Reader.Markdown
 where
-import Definition
-import Builder
+import Text.Pandoc.Definition
+import Text.Pandoc.Builder
 import Data.Sequence as Seq
 import Data.Monoid
 import qualified Data.Map as M
@@ -319,7 +319,7 @@ handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
         go x = singleton x
 
 pBlocks :: P Blocks
-pBlocks = mconcat <$> pBlock `sepBy` pNewlines
+pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
 
 pBlock :: P Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
