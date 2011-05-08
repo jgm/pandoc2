@@ -369,6 +369,7 @@ pListItem start = try $ do
       if n > 1
          then return (False, Blocks bs)
          else case viewl bs of
+                   EmptyL          -> return (True, Blocks bs)
                    (Para _ :< seq) ->
                         case viewl seq of
                               EmptyL               -> return (True, Blocks bs)
