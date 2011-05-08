@@ -26,6 +26,7 @@ import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Data.Generics.Uniplate.Operations (transformBi)
 import Network.URI ( escapeURIString, isAllowedInURI )
 import Text.HTML.TagSoup
+import Text.HTML.TagSoup.Entity (lookupEntity)
 
 data PState = PState {
                   sGetFile    :: FilePath -> P Text
@@ -451,10 +452,9 @@ pEntity :: P Inlines
 pEntity = try $ do
   char '&'
   x <- manyTill nonSpaceChar (char ';')
-  let t = '&' : x ++ ";"
-  case parseTags t of
-       [TagText [c]] -> return (txt $ T.singleton c)
-       _             -> mzero
+  case lookupEntity x of
+       Just c   -> return $ txt $ T.singleton c
+       _        -> mzero
 
 pHtmlInline :: P Inlines
 pHtmlInline = rawInline (Format "html") <$> (pHtmlComment <|> snd <$> pHtmlTag)
