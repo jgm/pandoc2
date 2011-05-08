@@ -8,17 +8,11 @@ import qualified Data.Map as M
 import Data.Traversable
 import qualified Data.Text as T
 import Data.Text (Text)
-import Data.Data
 import Data.Char (toLower)
 import qualified Data.ByteString.Char8 as B8
-import Data.List (intersperse)
 import qualified Data.Foldable as F
-import Data.Generics
 import Text.Parsec hiding (sepBy, newline)
-import Control.Monad.Identity (Identity)
 import Control.Monad
-import Control.Arrow ((***))
-import System.FilePath
 import System.IO (stderr)
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as E
@@ -195,6 +189,8 @@ pUri = try $ do
   ys <- manyTill nonnl (char '>')
   return $ T.pack xs <> T.singleton ':' <> T.pack ys
 
+many1Till :: Stream s m t
+          => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
 many1Till p q = do
   x <- p
   xs <- manyTill p q

@@ -9,10 +9,7 @@ import Data.Text (Text)
 import Data.Data
 import Data.List (intersperse)
 import Data.Foldable (toList)
-import Data.Generics
 import Data.String
-import Text.Parsec
-import Control.Monad.Identity (Identity)
 import Data.Generics.Uniplate.Data
 
 data Block = Para Inlines
@@ -205,4 +202,4 @@ textify = T.concat . map extractText . universeBi
         extractText (Txt t)   = t
         extractText Sp        = " "
         extractText LineBreak = " "
-        extractText x         = ""
+        extractText _         = ""

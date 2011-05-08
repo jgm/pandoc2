@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module HTML where
 import Definition
-import Data.Monoid
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Foldable as F
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
-import Data.Generics.Uniplate.Operations (transformBi, transformBiM)
+import Data.Generics.Uniplate.Operations (transformBi)
 
 nl :: Html
 nl = preEscapedText "\n"

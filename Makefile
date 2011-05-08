@@ -1,4 +1,4 @@
-OPTS=-O2 -Wall
+OPTS=-O2 -Wall -fno-warn-unused-do-bind
 PROFOPTS=-prof -auto-all -caf-all -fforce-recomp -rtsopts
 
 markdown: markdown.hs Pandoc.hs Parser.hs Definition.hs HTML.hs
