@@ -364,8 +364,7 @@ pListItem start = try $ do
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
       option ' ' $ char ' ' *> (option ' ' $ char ' ')
-      Blocks bs <- mconcat <$> (notFollowedBy spnl >> pBlock)
-                     `sepBy` pNewlines
+      Blocks bs <- mconcat <$> pBlock `sepBy` (pNewlines >> notFollowedBy spnl)
       if n > 1
          then return (False, Blocks bs)
          else case viewl bs of
@@ -383,14 +382,15 @@ listStart = bullet <|> enum
 bullet :: P Char
 bullet = try $ do
   b <- satisfy $ \c -> c == '-' || c == '+' || c == '*'
-  spaceChar
+  spaceChar <|> lookAhead (newline <|> '\n' <$ eof)
   -- not an hrule
   notFollowedBy $ sps *> char b *> sps *> char b *> sps
-                 *> skipMany (char b *> sps) *> newline
+                  *> skipMany (char b *> sps) *> newline
   return b
 
 enum :: P Char
-enum = try $ (digit <|> char '#') <* char '.' <* spaceChar
+enum = try $ (digit <|> char '#') <* char '.' <*
+              (spaceChar <|> lookAhead (newline <|> '\n' <$ eof))
 
 indentSpace :: P ()
 indentSpace = try $  (count 4 (char ' ') >> return ())
