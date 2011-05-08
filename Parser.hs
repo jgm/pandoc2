@@ -178,10 +178,13 @@ pAutolink = mkLink <$> pUri
   where mkLink u = link (txt u) Source{ location = escapeURI u, title = "" }
 
 pUri :: P Text
-pUri = T.pack
-  <$> try (char '<' *> lookAhead protocol *> manyTill nonnl (char '>'))
-    where protocol = choice $ map (try . string)
-           ["http:", "https:", "ftp:", "file:", "mailto:", "news:", "telnet:" ]
+pUri = try $ do
+  char '<'
+  xs <- manyTill nonSpaceChar (char ':')
+  guard $ map toLower xs `elem` ["http", "https", "ftp",
+                                 "file", "mailto", "news", "telnet" ]
+  ys <- manyTill nonnl (char '>')
+  return $ T.pack xs <> ":" <> T.pack ys
 
 many1Till p q = do
   x <- p
