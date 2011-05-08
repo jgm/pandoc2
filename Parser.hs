@@ -14,7 +14,7 @@ import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import qualified Data.Foldable as F
 import Data.Generics
-import Text.Parsec hiding (sepBy)
+import Text.Parsec hiding (sepBy, newline)
 import Control.Monad.Identity (Identity)
 import Control.Monad
 import Control.Arrow ((***))
@@ -103,10 +103,13 @@ pVerbatim = try $ do
             (try $ sps *> string delim *> notFollowedBy (char '`'))
 
 nonnl :: P Char
-nonnl = satisfy (/= '\n')
+nonnl = satisfy $ \c -> c /= '\n' && c /= '\r'
 
 sps :: P ()
 sps = skipMany spaceChar
+
+newline :: P Char
+newline = char '\n' <|> (char '\r' <* option '\n' (char '\n'))
 
 spnl :: P ()
 spnl = try $ sps <* newline
