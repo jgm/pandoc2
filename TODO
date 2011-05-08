@@ -1,5 +1,0 @@
-<div blah="<">
-
-my pHtmlTag is defective.
-Need to use positions w/ tagsoup, and feed whole input.
-see htmlTag in pandoc html reader, but make it better.

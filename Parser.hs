@@ -431,13 +431,15 @@ pRefTitle =  pRefTitleWith '\'' '\''
   where pRefTitleWith start end = T.pack <$> (char start *> manyTill nonnl
              (try $ char end *> lookAhead (() <$ spnl <|> eof)))
 
-pQuoted :: P Text
-pQuoted = T.pack <$> (quoteChar >>= \c -> char c *> manyTill anyChar (char c))
+pQuoted :: P String
+pQuoted = try $ quoteChar >>= \c ->
+  manyTill anyChar (char c) >>= \r ->
+    return (c : r ++ [c])
 
 pHtmlTag :: P ([Tag String], Text)
 pHtmlTag = try $ do
   char '<'
-  xs <- manyTill anyChar (char '>')
+  xs <- concat <$> manyTill (pQuoted <|> count 1 anyChar) (char '>')
   let t = '<' : xs ++ ">"
   case parseTags t of
        (y:_) | isTagText y   -> mzero
