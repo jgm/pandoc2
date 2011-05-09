@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving #-}
 module Text.Pandoc.Writer.HTML where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder (textify)
@@ -10,31 +10,49 @@ import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import Data.Generics.Uniplate.Operations (transformBi)
+import Control.Monad.State
+import Control.Applicative
+import Control.Monad
 
-nl :: Html
-nl = preEscapedText "\n"
+data WriterState = WriterState {  }
 
-blocksToHtml :: Blocks -> Html
+newtype Monoid a => W a = W { unW :: State WriterState a }
+            deriving (Monad)
+
+instance Monoid a => Monoid (W a) where
+  mempty = return mempty
+  mappend = liftM2 mappend
+
+instance Functor W where
+  fmap = liftM
+
+nl :: W Html
+nl = return $ preEscapedText "\n"
+
+docToHtml :: Blocks -> Html
+docToHtml bs = evalState (unW $ blocksToHtml bs) WriterState{ }
+
+blocksToHtml :: Blocks -> W Html
 blocksToHtml = F.foldMap (\b -> blockToHtml b <> nl) . unBlocks
 
-blockToHtml :: Block -> Html
-blockToHtml (Para ils) = H.p $ inlinesToHtml ils
+blockToHtml :: Block -> W Html
+blockToHtml (Para ils) = H.p <$> inlinesToHtml ils
 blockToHtml (Plain ils) = inlinesToHtml ils
-blockToHtml (Quote bs) = H.blockquote $ nl <> blocksToHtml bs
+blockToHtml (Quote bs) = H.blockquote <$> nl <> blocksToHtml bs
 blockToHtml (List attr bs) =
   let paraToPlain (Para xs) = Plain xs
       paraToPlain x         = x
       bs' = if listTight attr
                then transformBi paraToPlain bs
                else bs
-      items = F.foldMap (\b -> H.li (blocksToHtml b) <> nl) bs'
+      items = F.foldMap (\b -> (H.li <$> blocksToHtml b) <> nl) bs'
   in  case listStyle attr of
-           Bullet    -> H.ul $ nl <> items
-           Ordered   -> H.ol $ nl <> items
-blockToHtml (Code _attr t) = H.pre $ H.code $ toHtml t
-blockToHtml (RawBlock (Format "html") t) = preEscapedText t
-blockToHtml (RawBlock _ _) = mempty
-blockToHtml (Header lev ils) = h $ inlinesToHtml ils
+           Bullet    -> H.ul <$> nl <> items
+           Ordered   -> H.ol <$> nl <> items
+blockToHtml (Code _attr t) = return $ H.pre $ H.code $ toHtml t
+blockToHtml (RawBlock (Format "html") t) = return $ preEscapedText t
+blockToHtml (RawBlock _ _) = return mempty
+blockToHtml (Header lev ils) = h <$> inlinesToHtml ils
   where h = case lev of
              1  -> H.h1
              2  -> H.h2
@@ -42,27 +60,27 @@ blockToHtml (Header lev ils) = h $ inlinesToHtml ils
              4  -> H.h4
              5  -> H.h5
              _  -> H.p
-blockToHtml HRule = H.hr
+blockToHtml HRule = return H.hr
 
-inlinesToHtml :: Inlines -> Html
+inlinesToHtml :: Inlines -> W Html
 inlinesToHtml = F.foldMap inlineToHtml . unInlines
 
-inlineToHtml :: Inline -> Html
-inlineToHtml (Txt x) = toHtml x
-inlineToHtml Sp      = toHtml (" " :: L.Text)
-inlineToHtml (Emph ils) = H.em $ inlinesToHtml ils
-inlineToHtml (Strong ils) = H.strong $ inlinesToHtml ils
+inlineToHtml :: Inline -> W Html
+inlineToHtml (Txt x) = return $ toHtml x
+inlineToHtml Sp      = return $ toHtml (" " :: L.Text)
+inlineToHtml (Emph ils) = H.em <$> inlinesToHtml ils
+inlineToHtml (Strong ils) = H.strong <$> inlinesToHtml ils
 inlineToHtml (Link _ Ref{}) = error "Encountered Ref link!"
-inlineToHtml (Link (Label lab) src@Source{}) =
+inlineToHtml (Link (Label lab) src@Source{}) = do
   let tit = title src
-      x = H.a ! A.href (toValue $ location src) $ inlinesToHtml lab
-  in  if T.null tit then x else x ! A.title (toValue $ title src)
+  x <- (H.a ! A.href (toValue $ location src)) <$> inlinesToHtml lab
+  return $ if T.null tit then x else x ! A.title (toValue $ title src)
 inlineToHtml (Image _ Ref{}) = error "Encountered Ref image!"
-inlineToHtml (Image (Label lab) src@Source{}) =
+inlineToHtml (Image (Label lab) src@Source{}) = return $
   H.img ! A.src (toValue $ location src) ! A.title (toValue $ title src)
         ! A.alt (toValue $ textify lab)
-inlineToHtml LineBreak = H.br
-inlineToHtml (RawInline (Format "html") t) = preEscapedText t
-inlineToHtml (RawInline _ _) = mempty
-inlineToHtml (Verbatim _attr t) = H.code $ toHtml t
+inlineToHtml LineBreak = return $ H.br
+inlineToHtml (RawInline (Format "html") t) = return $ preEscapedText t
+inlineToHtml (RawInline _ _) = return $ mempty
+inlineToHtml (Verbatim _attr t) = return $ H.code $ toHtml t
 
