@@ -22,6 +22,7 @@ import Data.Generics.Uniplate.Operations (transformBi)
 import Network.URI ( escapeURIString, isAllowedInURI )
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Entity (lookupEntity)
+import Control.Monad.Identity
 
 data PState = PState {
                   sGetFile    :: FilePath -> P Text
@@ -41,9 +42,9 @@ pstate = PState { sGetFile  = undefined
                 , sReferences = M.empty
                 }
 
-type P a = ParsecT Text PState IO a
+type P a = ParsecT Text PState Identity a
 
-instance Stream Text IO Char where
+instance Stream Text Identity Char where
   uncons = return . T.uncons
 
 data LogLevel = DEBUG | INFO | WARNING | ERROR
@@ -136,17 +137,14 @@ logM level msg = do
               st { sMessages = sMessages st |> msg' }
      else return ()
 
-parseWith :: P a -> Text -> IO a
+parseWith :: P a -> Text -> (a, [Text])
 parseWith p t = do
   let p' = do x <- p
               msgs <- fmap sMessages getState
               return (x, msgs)
-  res <- runParserT p' pstate "input" t
-  case res of
+  case runParser p' pstate "input" t of
        Left err -> error $ show err
-       Right (x, msgs) -> do
-                   mapM_ (T.hPutStrLn stderr) $ F.toList msgs
-                   return x
+       Right (x, msgs) -> (x, F.toList msgs)
 
 pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
