@@ -12,8 +12,13 @@ markdown-prof: ${SOURCES}
 clean:
 	cabal clean
 
-test:
+test: markdowntests
+
+markdowntests:
 	cd Tests && \
-	for d in Tests*; do \
-		perl MarkdownTest.pl --testdir=$$d -s ../dist/build/markdown/markdown --tidy ;\
-	done
+	perl MarkdownTest.pl --testdir=Tests_Markdown_1.0.3 -s ../dist/build/markdown/markdown --tidy
+
+phptests:
+	cd Tests && \
+	perl MarkdownTest.pl --testdir=Tests_PHP_Markdown -s ../dist/build/markdown/markdown --tidy
+
