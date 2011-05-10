@@ -8,8 +8,8 @@ import Data.Text as T
 main :: IO ()
 main = do
   args <- getArgs
-  let convert = renderHtmlToByteStringIO B.putStr . docToHtml . fst .
-                parseWith pDoc
+  let convert s = renderHtmlToByteStringIO B.putStr . docToHtml
+                  =<< readMarkdown s
   case args of
        [] -> B.getContents >>= convert . convertTabs. decodeUtf8
        _  -> mapM_

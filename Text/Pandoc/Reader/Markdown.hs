@@ -6,6 +6,7 @@ import Text.Pandoc.Builder
 import Data.Sequence as Seq
 import Data.Monoid
 import qualified Data.Map as M
+import System.IO (hPutStrLn, stderr)
 import Data.Traversable
 import qualified Data.Text as T
 import Data.Text (Text)
@@ -25,6 +26,7 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 import Control.Monad.Identity
 
 data PState = PState {
+                  sNeedFile   :: Maybe (FilePath, Text)
                 , sMessages   :: Seq Text
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P ())
@@ -33,7 +35,8 @@ data PState = PState {
                 }
 
 pstate :: PState
-pstate = PState { sMessages = Seq.empty
+pstate = PState { sNeedFile = Nothing
+                , sMessages = Seq.empty
                 , sLogLevel = WARNING
                 , sEndline  = Seq.empty
                 , sBlockSep = Seq.empty
@@ -135,14 +138,39 @@ logM level msg = do
               st { sMessages = sMessages st |> msg' }
      else return ()
 
-parseWith :: P a -> Text -> (a, [Text])
-parseWith p t = do
-  let p' = do x <- p
-              msgs <- fmap sMessages getState
-              return (x, msgs)
-  case runParser p' pstate "input" t of
-       Left err -> error $ show err
-       Right (x, msgs) -> (x, F.toList msgs)
+data Result = Done { messages :: [Text], document :: Blocks }
+            | NeedFile { filePath :: FilePath, continue :: Text -> P Result }
+
+pDoc :: P Result
+pDoc = do
+  skipMany pNewline
+  bs <- pBlocks
+  skipMany pNewline
+  eof
+  bs' <- resolveRefs bs
+  msgs <- sMessages <$> getState
+  needFile <- sNeedFile <$> getState
+  ps <- getParserState
+  return $ case needFile of
+                Just (fp,inp) -> NeedFile { filePath = fp, continue = p }
+                                   where p t = do setParserState ps
+                                                  modifyState $ \st ->
+                                                    st{ sNeedFile = Nothing }
+                                                  setInput $ t <> inp
+                                                  pDoc
+                Nothing     -> Done { messages = F.toList msgs, document = bs' }
+
+readMarkdown :: Text -> IO Blocks
+readMarkdown = parseWith pDoc
+
+parseWith :: P Result -> Text -> IO Blocks
+parseWith p t =
+  case runParser p pstate "input" t of
+       Left err       -> error $ show err
+       Right (Done{ messages = msgs, document = doc }) ->
+                         mapM_ (T.hPutStrLn stderr) msgs >> return doc
+       Right (NeedFile{ filePath = fp, continue = p }) ->
+                         T.readFile fp >>= (\t' -> parseWith (p t') t)
 
 pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
@@ -294,9 +322,6 @@ pStrong = strong <$>
 trimInlines :: Inlines -> Inlines
 trimInlines = Inlines . dropWhileL (== Sp) . dropWhileR (== Sp) . unInlines
 
-pDoc :: P Blocks
-pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
-
 resolveRefs :: Blocks -> P Blocks
 resolveRefs bs = do
   refs <- sReferences <$> getState
@@ -319,7 +344,16 @@ pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
 
 pBlock :: P Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
-                 pHeader, pHtmlBlock, pPara]
+                 pHeader, pHtmlBlock, pInclude, pPara]
+
+pInclude :: P Blocks
+pInclude = try $ do
+  string "\\include{"
+  fp <- manyTill anyChar (char '}')
+  inp <- getInput
+  setInput T.empty
+  modifyState $ \st -> st{ sNeedFile = Just (fp, inp) }
+  return mempty
 
 pBlank :: P Blocks
 pBlank = mempty <$ pNewlines
