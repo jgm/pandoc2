@@ -25,7 +25,6 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 import Control.Monad.Identity
 
 data PState = PState {
-                  sGetFile    :: FilePath -> P Text
                 , sMessages   :: Seq Text
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P ())
@@ -34,8 +33,7 @@ data PState = PState {
                 }
 
 pstate :: PState
-pstate = PState { sGetFile  = undefined
-                , sMessages = Seq.empty
+pstate = PState { sMessages = Seq.empty
                 , sLogLevel = WARNING
                 , sEndline  = Seq.empty
                 , sBlockSep = Seq.empty
