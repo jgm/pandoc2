@@ -17,7 +17,7 @@ import Text.Parsec hiding (sepBy, newline)
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.State
-import System.IO (stderr)
+import System.IO (hPutStrLn, stderr)
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as E
 import Control.Applicative ((<$>), (<$), (*>), (<*))
@@ -28,7 +28,7 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 
 data Monad m => PState m =
          PState { sGetFile    :: FilePath -> P m Text
-                , sMessages   :: Seq Text
+                , sMessages   :: Seq Message
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P m ())
                 , sBlockSep   :: Seq (P m ())
@@ -42,6 +42,13 @@ instance Monad m => Stream Text m Char where
 
 data LogLevel = DEBUG | INFO | WARNING | ERROR
               deriving (Ord, Eq, Show, Read)
+
+data Message = Message LogLevel SourcePos Text
+
+instance Show Message where
+  show (Message level pos t) = show level ++ " (line " ++
+             show (sourceLine pos) ++ " col " ++
+             show (sourceColumn pos) ++ "): " ++ T.unpack t
 
 pushEndline :: Monad m => P m () -> P m ()
 pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
@@ -122,15 +129,12 @@ logM :: Monad m => LogLevel -> Text -> P m ()
 logM level msg = do
   logLevel <- fmap sLogLevel getState
   pos <- getPosition
-  let msg' = showText level <> " (line " <>
-             showText (sourceLine pos) <> " col " <>
-             showText (sourceColumn pos) <> "): " <> msg
   messages <- sMessages <$> getState
   if level >= logLevel
-     then modifyState $ \st -> st{ sMessages = messages |> msg' }
+     then modifyState $ \st -> st{ sMessages = messages |> Message logLevel pos msg }
      else return ()
 
-data Result a = Success { messages :: [Text], document :: a }
+data Result a = Success { messages :: [Message], document :: a }
               | Failure ParseError
               deriving Show
 
@@ -164,7 +168,7 @@ parseWithM p t = do
               , sReferences = M.empty
               }
   let p' = do x <- p
-              getState >>= F.mapM_ (liftIO . T.hPutStrLn stderr) . sMessages
+              getState >>= F.mapM_ (liftIO . hPutStrLn stderr . show) . sMessages
               return x
   res <- runParserT p' s "input" t
   case res of
