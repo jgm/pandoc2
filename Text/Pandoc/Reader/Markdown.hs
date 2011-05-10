@@ -28,11 +28,23 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 
 data Monad m => PState m =
          PState { sGetFile    :: FilePath -> P m Text
+                , sInInclude  :: [FilePath]
                 , sMessages   :: Seq Message
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P m ())
                 , sBlockSep   :: Seq (P m ())
                 , sReferences :: M.Map Key Source
+                }
+
+pstate :: Monad m => PState m
+pstate = PState { sGetFile    = \f -> logM WARNING ("Could not include file " <> T.pack f)
+                                    >> return mempty
+                , sInInclude  = []
+                , sMessages   = Seq.empty
+                , sLogLevel   = WARNING
+                , sEndline    = Seq.empty
+                , sBlockSep   = Seq.empty
+                , sReferences = M.empty
                 }
 
 type P m a = ParsecT Text (PState m) m a
@@ -138,35 +150,37 @@ data Result a = Success { messages :: [Message], document :: a }
               | Failure ParseError
               deriving Show
 
+pInclude :: Monad m => P m Blocks
+pInclude = do
+  f <- try (string "\\include{" *> manyTill anyChar (char '}'))
+  inIncludes <- sInInclude <$> getState
+  when (f `elem` inIncludes) $
+    error $ "Recursive include in " <> show f
+  modifyState $ \st -> st{ sInInclude = f : inIncludes }
+  old <- getInput
+  getFile <- sGetFile <$> getState
+  getFile f >>= setInput
+  skipMany pNewline
+  bs <- pBlocks
+  skipMany pNewline
+  eof
+  modifyState $ \st -> st{ sInInclude = inIncludes }
+  setInput old
+  return bs
+
 parseWith :: P (Either ParseError) a -> Text -> Result a
 parseWith p t =
-  let s = PState {
-                sGetFile    = \f -> logM WARNING ("Could not include file " <> T.pack f)
-                                    >> return mempty
-              , sMessages   = Seq.empty
-              , sLogLevel   = WARNING
-              , sEndline    = Seq.empty
-              , sBlockSep   = Seq.empty
-              , sReferences = M.empty
-              }
-      p' = do x <- p
+  let p' = do x <- p
               msgs <- sMessages <$> getState
               return (x, F.toList msgs)
-  in  case runParserT p' s "input" t of
+  in  case runParserT p' pstate "input" t of
             Right (Left err)        -> Failure err
             Right (Right (x, msgs)) -> Success { messages = msgs, document = x }
             Left e                  -> Failure e
 
 parseWithM :: MonadIO m => P m a -> Text -> m a
 parseWithM p t = do
-  let s = PState {
-                sGetFile    = liftIO . T.readFile
-              , sMessages   = Seq.empty
-              , sLogLevel   = WARNING
-              , sEndline    = Seq.empty
-              , sBlockSep   = Seq.empty
-              , sReferences = M.empty
-              }
+  let s = pstate { sGetFile = liftIO . T.readFile }
   let p' = do x <- p
               getState >>= F.mapM_ (liftIO . hPutStrLn stderr . show) . sMessages
               return x
@@ -350,7 +364,7 @@ pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
 
 pBlock :: Monad m => P m Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
-                 pHeader, pHtmlBlock, pPara]
+                 pHeader, pHtmlBlock, pInclude, pPara]
 
 pBlank :: Monad m => P m Blocks
 pBlank = mempty <$ pNewlines
