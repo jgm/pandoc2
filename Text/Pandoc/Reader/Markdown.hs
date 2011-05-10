@@ -16,7 +16,6 @@ import qualified Data.Foldable as F
 import Text.Parsec hiding (sepBy, newline)
 import Control.Monad
 import Control.Monad.Trans
-import Control.Monad.State
 import System.IO (hPutStrLn, stderr)
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as E
@@ -141,9 +140,9 @@ logM :: Monad m => LogLevel -> Text -> P m ()
 logM level msg = do
   logLevel <- fmap sLogLevel getState
   pos <- getPosition
-  messages <- sMessages <$> getState
+  msgs <- sMessages <$> getState
   if level >= logLevel
-     then modifyState $ \st -> st{ sMessages = messages |> Message logLevel pos msg }
+     then modifyState $ \st -> st{ sMessages = msgs |> Message logLevel pos msg }
      else return ()
 
 data Result a = Success { messages :: [Message], document :: a }
