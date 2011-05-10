@@ -26,7 +26,7 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 import Control.Monad.Identity
 
 data PState = PState {
-                  sNeedFile   :: Maybe (FilePath, Text)
+                  sNeedFile   :: Maybe (FilePath, Text -> P Result)
                 , sMessages   :: Seq Text
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P ())
@@ -139,7 +139,8 @@ logM level msg = do
      else return ()
 
 data Result = Done { messages :: [Text], document :: Blocks }
-            | NeedFile { filePath :: FilePath, continue :: Text -> P Result }
+            | NeedFile { filePath :: FilePath, partial :: Blocks,
+                         continue :: Text -> P Result }
 
 pDoc :: P Result
 pDoc = do
@@ -150,14 +151,9 @@ pDoc = do
   bs' <- resolveRefs bs
   msgs <- sMessages <$> getState
   needFile <- sNeedFile <$> getState
-  ps <- getParserState
   return $ case needFile of
-                Just (fp,inp) -> NeedFile { filePath = fp, continue = p }
-                                   where p t = do setParserState ps
-                                                  modifyState $ \st ->
-                                                    st{ sNeedFile = Nothing }
-                                                  setInput $ t <> inp
-                                                  pDoc
+                Just (fp,c) -> NeedFile { filePath = fp, partial = bs',
+                                          continue = c }
                 Nothing     -> Done { messages = F.toList msgs, document = bs' }
 
 readMarkdown :: Text -> IO Blocks
@@ -169,8 +165,8 @@ parseWith p t =
        Left err       -> error $ show err
        Right (Done{ messages = msgs, document = doc }) ->
                          mapM_ (T.hPutStrLn stderr) msgs >> return doc
-       Right (NeedFile{ filePath = fp, continue = p }) ->
-                         T.readFile fp >>= (\t' -> parseWith (p t') t)
+       Right (NeedFile{ filePath = fp, partial = part, continue = p }) ->
+                         T.readFile fp >>= (\t' -> (part <>) <$> parseWith (p t') t)
 
 pInline :: P Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
@@ -352,7 +348,13 @@ pInclude = try $ do
   fp <- manyTill anyChar (char '}')
   inp <- getInput
   setInput T.empty
-  modifyState $ \st -> st{ sNeedFile = Just (fp, inp) }
+  ps <- getParserState
+  let p t = do setParserState ps
+               modifyState $ \st -> st{ sNeedFile = Nothing }
+               setInput $ t <> inp
+               skipMany pNewline
+               pDoc
+  modifyState $ \st -> st{ sNeedFile = Just (fp, p) }
   return mempty
 
 pBlank :: P Blocks
