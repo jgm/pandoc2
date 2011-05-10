@@ -15,6 +15,8 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.Foldable as F
 import Text.Parsec hiding (sepBy, newline)
 import Control.Monad
+import Control.Monad.Trans
+import Control.Monad.State
 import System.IO (stderr)
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as E
@@ -26,20 +28,11 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 
 data Monad m => PState m =
          PState { sGetFile    :: FilePath -> P m Text
-                , sMessage    :: Text -> P m ()
+                , sMessages   :: Seq Text
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P m ())
                 , sBlockSep   :: Seq (P m ())
                 , sReferences :: M.Map Key Source
-                }
-
-pstate :: Monad m => PState m
-pstate = PState { sGetFile  = \_ -> return mempty
-                , sMessage  = \_ -> return ()
-                , sLogLevel = WARNING
-                , sEndline  = Seq.empty
-                , sBlockSep = Seq.empty
-                , sReferences = M.empty
                 }
 
 type P m a = ParsecT Text (PState m) m a
@@ -132,16 +125,50 @@ logM level msg = do
   let msg' = showText level <> " (line " <>
              showText (sourceLine pos) <> " col " <>
              showText (sourceColumn pos) <> "): " <> msg
-  message <- sMessage <$> getState
+  messages <- sMessages <$> getState
   if level >= logLevel
-     then message msg'
+     then modifyState $ \st -> st{ sMessages = messages |> msg' }
      else return ()
 
-parseWith :: Monad m => P m a -> Text -> m a
-parseWith p t = do
-  res <- runParserT p pstate "input" t
+data Result a = Success { messages :: [Text], document :: a }
+              | Failure ParseError
+              deriving Show
+
+parseWith :: P (Either ParseError) a -> Text -> Result a
+parseWith p t =
+  let s = PState {
+                sGetFile    = \f -> logM WARNING ("Could not include file " <> T.pack f)
+                                    >> return mempty
+              , sMessages   = Seq.empty
+              , sLogLevel   = WARNING
+              , sEndline    = Seq.empty
+              , sBlockSep   = Seq.empty
+              , sReferences = M.empty
+              }
+      p' = do x <- p
+              msgs <- sMessages <$> getState
+              return (x, F.toList msgs)
+  in  case runParserT p' s "input" t of
+            Right (Left err)        -> Failure err
+            Right (Right (x, msgs)) -> Success { messages = msgs, document = x }
+            Left e                  -> Failure e
+
+parseWithM :: MonadIO m => P m a -> Text -> m a
+parseWithM p t = do
+  let s = PState {
+                sGetFile    = liftIO . T.readFile
+              , sMessages   = Seq.empty
+              , sLogLevel   = WARNING
+              , sEndline    = Seq.empty
+              , sBlockSep   = Seq.empty
+              , sReferences = M.empty
+              }
+  let p' = do x <- p
+              getState >>= F.mapM_ (liftIO . T.hPutStrLn stderr) . sMessages
+              return x
+  res <- runParserT p' s "input" t
   case res of
-       Left err -> error $ show err
+       Left err -> fail $ show err
        Right x  -> return x
 
 pInline :: Monad m => P m Inlines
