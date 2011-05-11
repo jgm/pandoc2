@@ -215,7 +215,7 @@ pSymbol :: PMonad m => P m Inlines
 pSymbol = txt . T.singleton <$> nonnl
 
 pSp :: PMonad m => P m Inlines
-pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
+pSp = spaceChar *> (  skipMany1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
                   <|> return sp)
 
 pAutolink :: PMonad m => P m Inlines
