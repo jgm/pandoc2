@@ -2,6 +2,8 @@
    FlexibleInstances #-}
 module Text.Pandoc.Parsing
 where
+import Text.Pandoc.Definition
+import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad
 import Control.Monad.Trans
@@ -10,6 +12,7 @@ import qualified Data.Text.IO as T
 import System.IO (hPutStrLn, stderr)
 import Data.Text (Text)
 import Text.Parsec
+import Data.Sequence as Seq
 
 instance Monad m => Stream Text m Char where
   uncons = return . T.uncons
@@ -51,5 +54,25 @@ instance PMonad IO where
 instance PMonad Maybe where
   addMessage _ = Just ()
   getFile    _ = Nothing
+
+data PMonad m => PState m =
+         PState { sInInclude  :: [FilePath]
+                , sMessages   :: Seq Message
+                , sLogLevel   :: LogLevel
+                , sEndline    :: Seq (P m ())
+                , sBlockSep   :: Seq (P m ())
+                , sReferences :: M.Map Key Source
+                }
+
+pstate :: PMonad m => PState m
+pstate = PState { sInInclude  = []
+                , sMessages   = Seq.empty
+                , sLogLevel   = WARNING
+                , sEndline    = Seq.empty
+                , sBlockSep   = Seq.empty
+                , sReferences = M.empty
+                }
+
+type P m a = ParsecT Text (PState m) m a
 
 

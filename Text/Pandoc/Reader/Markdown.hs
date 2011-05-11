@@ -24,26 +24,6 @@ import Network.URI ( escapeURIString, isAllowedInURI )
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Entity (lookupEntity)
 
-data PMonad m => PState m =
-         PState { sInInclude  :: [FilePath]
-                , sMessages   :: Seq Message
-                , sLogLevel   :: LogLevel
-                , sEndline    :: Seq (P m ())
-                , sBlockSep   :: Seq (P m ())
-                , sReferences :: M.Map Key Source
-                }
-
-pstate :: PMonad m => PState m
-pstate = PState { sInInclude  = []
-                , sMessages   = Seq.empty
-                , sLogLevel   = WARNING
-                , sEndline    = Seq.empty
-                , sBlockSep   = Seq.empty
-                , sReferences = M.empty
-                }
-
-type P m a = ParsecT Text (PState m) m a
-
 pushEndline :: PMonad m => P m () -> P m ()
 pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
 
