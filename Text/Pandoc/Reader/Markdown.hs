@@ -25,9 +25,8 @@ import Network.URI ( escapeURIString, isAllowedInURI )
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Entity (lookupEntity)
 
-data Monad m => PState m =
-         PState { sGetFile    :: FilePath -> P m Text
-                , sInInclude  :: [FilePath]
+data PMonad m => PState m =
+         PState { sInInclude  :: [FilePath]
                 , sMessages   :: Seq Message
                 , sLogLevel   :: LogLevel
                 , sEndline    :: Seq (P m ())
@@ -35,10 +34,8 @@ data Monad m => PState m =
                 , sReferences :: M.Map Key Source
                 }
 
-pstate :: Monad m => PState m
-pstate = PState { sGetFile    = \f -> logM WARNING ("Could not include file " <> T.pack f)
-                                    >> return mempty
-                , sInInclude  = []
+pstate :: PMonad m => PState m
+pstate = PState { sInInclude  = []
                 , sMessages   = Seq.empty
                 , sLogLevel   = WARNING
                 , sEndline    = Seq.empty
@@ -61,47 +58,47 @@ instance Show Message where
              show (sourceLine pos) ++ " col " ++
              show (sourceColumn pos) ++ "): " ++ T.unpack t
 
-pushEndline :: Monad m => P m () -> P m ()
+pushEndline :: PMonad m => P m () -> P m ()
 pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
 
-popEndline :: Monad m => P m ()
+popEndline :: PMonad m => P m ()
 popEndline = do
   st <- getState
   case viewr (sEndline st) of
         EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
         ps :> _ -> setState st{ sEndline = ps }
 
-withEndline :: Monad m => P m a -> P m b -> P m b
+withEndline :: PMonad m => P m a -> P m b -> P m b
 withEndline sep p = pushEndline (sep *> return ()) *> p <* popEndline
 
-pushBlockSep :: Monad m => P m () -> P m ()
+pushBlockSep :: PMonad m => P m () -> P m ()
 pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
 
-popBlockSep :: Monad m => P m ()
+popBlockSep :: PMonad m => P m ()
 popBlockSep = do
   st <- getState
   case viewr (sBlockSep st) of
         EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
         ps :> _ -> setState st{ sBlockSep = ps }
 
-withBlockSep :: Monad m => P m a -> P m b -> P m b
+withBlockSep :: PMonad m => P m a -> P m b -> P m b
 withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
 
-pBlockSep :: Monad m => P m ()
+pBlockSep :: PMonad m => P m ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
-pNewlines :: Monad m => P m Int
+pNewlines :: PMonad m => P m Int
 pNewlines = Prelude.length <$> many1 pNewline
 
-pNewline :: Monad m => P m Int
+pNewline :: PMonad m => P m Int
 pNewline = try $ spnl *> pBlockSep *> return 1
 
-pEndline :: Monad m => P m Inlines
+pEndline :: PMonad m => P m Inlines
 pEndline = try $
   newline *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
   lookAhead nonnl *> return sp
 
-pVerbatim :: Monad m => P m Inlines
+pVerbatim :: PMonad m => P m Inlines
 pVerbatim = try $ do
   delim <- many1 (char '`')
   sps
@@ -109,47 +106,43 @@ pVerbatim = try $ do
      <$> many1Till (nonnl <|> (' ' <$ (pNewline *> notFollowedBy spnl)))
             (try $ sps *> string delim *> notFollowedBy (char '`'))
 
-nonnl :: Monad m => P m Char
+nonnl :: PMonad m => P m Char
 nonnl = satisfy $ \c -> c /= '\n' && c /= '\r'
 
-sps :: Monad m => P m ()
+sps :: PMonad m => P m ()
 sps = skipMany spaceChar
 
-newline :: Monad m => P m Char
+newline :: PMonad m => P m Char
 newline = char '\n' <|> (char '\r' <* option '\n' (char '\n'))
 
-spnl :: Monad m => P m ()
+spnl :: PMonad m => P m ()
 spnl = try $ sps <* newline
 
-eol :: Monad m => P m ()
+eol :: PMonad m => P m ()
 eol = sps *> lookAhead (() <$ newline <|> eof)
 
-spOptNl :: Monad m => P m ()
+spOptNl :: PMonad m => P m ()
 spOptNl = try $ sps <* optional (pNewline <* sps)
 
-spaceChar :: Monad m => P m Char
+spaceChar :: PMonad m => P m Char
 spaceChar = satisfy (\c -> c == ' ' || c == '\t')
 
-nonSpaceChar :: Monad m => P m Char
+nonSpaceChar :: PMonad m => P m Char
 nonSpaceChar = satisfy  (\c -> c /= ' ' && c /= '\n' && c /= '\t')
 
 showText :: Show a => a -> Text
 showText = T.pack . show
 
-logM :: Monad m => LogLevel -> Text -> P m ()
+logM :: PMonad m => LogLevel -> Text -> P m ()
 logM level msg = do
   logLevel <- fmap sLogLevel getState
   pos <- getPosition
   msgs <- sMessages <$> getState
   if level >= logLevel
-     then modifyState $ \st -> st{ sMessages = msgs |> Message logLevel pos msg }
+     then modifyState $ \st -> st{ sMessages = msgs |> Message level pos msg }
      else return ()
 
-data Result a = Success { messages :: [Message], document :: a }
-              | Failure ParseError
-              deriving Show
-
-pInclude :: Monad m => P m Blocks
+pInclude :: PMonad m => P m Blocks
 pInclude = do
   f <- try (string "\\include{" *> manyTill anyChar (char '}'))
   inIncludes <- sInInclude <$> getState
@@ -157,8 +150,8 @@ pInclude = do
     error $ "Recursive include in " <> show f
   modifyState $ \st -> st{ sInInclude = f : inIncludes }
   old <- getInput
-  getFile <- sGetFile <$> getState
-  getFile f >>= setInput
+  -- getFile <- sGetFile <$> getState
+  lift (getFile f) >>= setInput
   skipMany pNewline
   bs <- pBlocks
   skipMany pNewline
@@ -167,61 +160,78 @@ pInclude = do
   setInput old
   return bs
 
-parseWith :: P (Either ParseError) a -> Text -> Result a
-parseWith p t =
+data Result a = Success [Message] a
+              | Failure String
+              deriving Show
+
+instance Monad Result where
+  return x = Success [] x
+  fail   s = Failure s
+  Failure s    >>= _ = Failure s
+  Success ms x >>= f = case f x of
+                            Failure s      -> Failure s
+                            Success ms' x' -> Success (ms `mappend` ms') x'
+
+class Monad m => PMonad m where
+  addMessage :: Message -> m ()
+  getFile    :: FilePath -> m Text
+
+instance PMonad Result where
+  addMessage m = Success [m] ()
+  getFile    f = Failure $ "Cannot include file " ++ show f
+
+instance PMonad IO where
+  addMessage m = liftIO $ hPutStrLn stderr $ show m
+  getFile    f = liftIO $ T.readFile f
+
+instance PMonad Maybe where
+  addMessage _ = Just ()
+  getFile    f = Nothing
+
+parseWith :: PMonad m => P m a -> Text -> m a
+parseWith p t = do
   let p' = do x <- p
               msgs <- sMessages <$> getState
-              return (x, F.toList msgs)
-  in  case runParserT p' pstate "input" t of
-            Right (Left err)        -> Failure err
-            Right (Right (x, msgs)) -> Success { messages = msgs, document = x }
-            Left e                  -> Failure e
-
-parseWithM :: MonadIO m => P m a -> Text -> m a
-parseWithM p t = do
-  let s = pstate { sGetFile = liftIO . T.readFile }
-  let p' = do x <- p
-              getState >>= F.mapM_ (liftIO . hPutStrLn stderr . show) . sMessages
-              return x
-  res <- runParserT p' s "input" t
+              return (F.toList msgs, x)
+  res <- runParserT p' pstate "input" t
   case res of
-       Left err -> fail $ show err
-       Right x  -> return x
+       Right (msgs, x) -> mapM_ addMessage msgs >> return x
+       Left s          -> fail (show s)
 
-pInline :: Monad m => P m Inlines
+pInline :: PMonad m => P m Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
                    pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSymbol ]
 
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
 
-pInlines :: Monad m => P m Inlines
+pInlines :: PMonad m => P m Inlines
 pInlines = toInlines <$> many1 pInline
 
-pEscaped :: Monad m => P m Inlines
+pEscaped :: PMonad m => P m Inlines
 pEscaped = txt . T.singleton <$> (try $ char '\\' *> oneOf "\\`*_{}[]()>#+-.!~")
 
-pSymbol :: Monad m => P m Inlines
+pSymbol :: PMonad m => P m Inlines
 pSymbol = txt . T.singleton <$> nonnl
 
-pSp :: Monad m => P m Inlines
+pSp :: PMonad m => P m Inlines
 pSp = spaceChar *> (  many1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
                   <|> return sp)
 
-pAutolink :: Monad m => P m Inlines
+pAutolink :: PMonad m => P m Inlines
 pAutolink = mkLink <$> pUri <|> mkEmail <$> pEmail
   where mkLink u = link (txt u) Source{ location = escapeURI u, title = "" }
         mkEmail u = link (txt u) Source{ location = escapeURI ("mailto:" <> u),
                                           title = "" }
 
-pEmail :: Monad m => P m Text
+pEmail :: PMonad m => P m Text
 pEmail = try $ do
   char '<'
   xs <- many1Till nonSpaceChar (char '@')
   ys <- manyTill nonnl (char '>')
   return $ T.pack xs <> T.singleton '@' <> T.pack ys
 
-pUri :: Monad m => P m Text
+pUri :: PMonad m => P m Text
 pUri = try $ do
   char '<'
   xs <- many1Till nonSpaceChar (char ':')
@@ -237,17 +247,17 @@ many1Till p q = do
   xs <- manyTill p q
   return (x:xs)
 
-pBracketedInlines :: Monad m => P m Inlines
+pBracketedInlines :: PMonad m => P m Inlines
 pBracketedInlines = try $
   char '[' *> (toInlines <$> manyTill pInline (char ']'))
 
-pImage :: Monad m => P m Inlines
+pImage :: PMonad m => P m Inlines
 pImage = try $ do
   char '!'
   [Link lab x] <- F.toList . unInlines <$> pLink
   return $ inline $ Image lab x
 
-pLink :: Monad m => P m Inlines
+pLink :: PMonad m => P m Inlines
 pLink = try $ do
   ils <- pBracketedInlines
   guard $ ils /= mempty
@@ -255,7 +265,7 @@ pLink = try $ do
   let ref = Ref{ key = Key ils, fallback = txt "[" <> ils <> txt "]" }
   pExplicitLink lab <|> pReferenceLink lab ref
 
-pReferenceLink :: Monad m => Label -> Source -> P m Inlines
+pReferenceLink :: PMonad m => Label -> Source -> P m Inlines
 pReferenceLink lab x = try $ do
   (k, fall) <- option (key x, fallback x) $ try $ do
                    s <- option mempty $ sp <$
@@ -266,7 +276,7 @@ pReferenceLink lab x = try $ do
                    return (k',f')
   return $ inline $ Link lab Ref{ key = k, fallback = fall }
 
-pExplicitLink :: Monad m => Label -> P m Inlines
+pExplicitLink :: PMonad m => Label -> P m Inlines
 pExplicitLink lab = try $ do
   char '('
   sps
@@ -276,28 +286,28 @@ pExplicitLink lab = try $ do
   char ')'
   return $ inline $ Link lab Source{ location = escapeURI src, title = tit }
 
-pSource :: Monad m => P m Text
+pSource :: PMonad m => P m Text
 pSource = T.pack
        <$> ((char '<' *> manyTill nonnl (char '>'))
        <|> many (notFollowedBy (quoteChar <|> char ')') *> nonSpaceChar))
 
-quoteChar :: Monad m => P m Char
+quoteChar :: PMonad m => P m Char
 quoteChar = satisfy $ \c -> c == '\'' || c == '"'
 
-pTitle :: Monad m => P m Text
+pTitle :: PMonad m => P m Text
 pTitle = do
   c <- quoteChar
   let end = try $ char c *> lookAhead (sps *> char ')')
   T.pack <$> manyTill anyChar end
 
-pTxt :: Monad m => P m Inlines
+pTxt :: PMonad m => P m Inlines
 pTxt = do
   x <- letter
   let txtchar = letter <|> (try $ char '_' <* lookAhead txtchar)
   xs <- many txtchar
   return $ txt $ T.pack (x:xs)
 
-pInlinesBetween :: Monad m => P m a -> P m b -> P m Inlines
+pInlinesBetween :: PMonad m => P m a -> P m b -> P m Inlines
 pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
 
 -- | A more general form of @notFollowedBy@.  This one allows any~
@@ -311,7 +321,7 @@ notFollowedBy' p  = try $ join $  do  a <- try p
                                   return (return ())
 -- (This version due to Andrew Pimlott on the Haskell mailing list.)
 
-pFours :: Monad m => P m Inlines
+pFours :: PMonad m => P m Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   x <- (char '*' <|> char '_')
   y <- char x
@@ -319,7 +329,7 @@ pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   rest <- many1 (char x)
   return $ txt $ T.pack $ x : y : z : rest
 
-pEmph :: Monad m => P m Inlines
+pEmph :: PMonad m => P m Inlines
 pEmph = emph <$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
     where starStart = char '*' *> notFollowedBy (spaceChar <|> newline)
@@ -327,7 +337,7 @@ pEmph = emph <$>
           ulStart   = char '_' *> notFollowedBy (spaceChar <|> newline)
           ulEnd     = notFollowedBy' pStrong *> char '_'
 
-pStrong :: Monad m => P m Inlines
+pStrong :: PMonad m => P m Inlines
 pStrong = strong <$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
     where starStart = string "**" *> notFollowedBy (spaceChar <|> newline)
@@ -338,10 +348,10 @@ pStrong = strong <$>
 trimInlines :: Inlines -> Inlines
 trimInlines = Inlines . dropWhileL (== Sp) . dropWhileR (== Sp) . unInlines
 
-pDoc :: Monad m => P m Blocks
+pDoc :: PMonad m => P m Blocks
 pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
 
-resolveRefs :: Monad m => Blocks -> P m Blocks
+resolveRefs :: PMonad m => Blocks -> P m Blocks
 resolveRefs bs = do
   refs <- sReferences <$> getState
   return $ transformBi (handleRef refs) bs
@@ -358,31 +368,31 @@ handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
                  Nothing -> unInlines ils
         go x = singleton x
 
-pBlocks :: Monad m => P m Blocks
+pBlocks :: PMonad m => P m Blocks
 pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
 
-pBlock :: Monad m => P m Blocks
+pBlock :: PMonad m => P m Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
                  pHeader, pHtmlBlock, pInclude, pPara]
 
-pBlank :: Monad m => P m Blocks
+pBlank :: PMonad m => P m Blocks
 pBlank = mempty <$ pNewlines
 
-pPara :: Monad m => P m Blocks
+pPara :: PMonad m => P m Blocks
 pPara = para <$> pInlines
 
-pQuote :: Monad m => P m Blocks
+pQuote :: PMonad m => P m Blocks
 pQuote = quote <$> try (quoteStart
    *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
     where quoteStart = try $ nonindentSpace *> char '>' *> optional spaceChar
 
-pHeader :: Monad m => P m Blocks
+pHeader :: PMonad m => P m Blocks
 pHeader = pHeaderSetext <|> pHeaderATX
 
-setextChar :: Monad m => P m Char
+setextChar :: PMonad m => P m Char
 setextChar = char '=' <|> char '-'
 
-pHeaderSetext :: Monad m => P m Blocks
+pHeaderSetext :: PMonad m => P m Blocks
 pHeaderSetext = try $ do
   -- lookahead to speed up parsing
   lookAhead $ skipMany nonnl *> pNewline *> setextChar
@@ -393,21 +403,21 @@ pHeaderSetext = try $ do
   let level = if c == '=' then 1 else 2
   return $ header level ils
 
-pHeaderATX :: Monad m => P m Blocks
+pHeaderATX :: PMonad m => P m Blocks
 pHeaderATX = try $ do
   level <- Prelude.length <$> many1 (char '#')
   sps
   let closeATX = try $ skipMany (char '#') *> eol
   header level <$> toInlines <$> many1Till pInline closeATX
 
-pList :: Monad m => P m Blocks
+pList :: PMonad m => P m Blocks
 pList = do
   (mark, style) <- lookAhead
                  $ ((enum, Ordered) <$ enum) <|> ((bullet, Bullet) <$ bullet)
   (tights, bs) <- unzip <$> many1 (pListItem mark)
   return $ block $ List ListAttr{ listTight = and tights, listStyle = style } bs
 
-pListItem :: Monad m => P m a -> P m (Bool, Blocks) -- True = suitable for tight list
+pListItem :: PMonad m => P m a -> P m (Bool, Blocks) -- True = suitable for tight list
 pListItem start = try $ do
   n <- option 0 pNewlines
   start
@@ -429,10 +439,10 @@ pListItem start = try $ do
                               _                    ->  return (False, Blocks bs)
                    _                -> return (False, Blocks bs)
 
-listStart :: Monad m => P m Char
+listStart :: PMonad m => P m Char
 listStart = bullet <|> enum
 
-bullet :: Monad m => P m Char
+bullet :: PMonad m => P m Char
 bullet = try $ do
   nonindentSpace
   b <- satisfy $ \c -> c == '-' || c == '+' || c == '*'
@@ -442,31 +452,31 @@ bullet = try $ do
                   *> skipMany (char b *> sps) *> newline
   return b
 
-enum :: Monad m => P m Char
+enum :: PMonad m => P m Char
 enum = try $ nonindentSpace *> ('#' <$ many1 digit <|> char '#') <* char '.' <*
               (spaceChar <|> lookAhead (newline <|> '\n' <$ eof))
 
-indentSpace :: Monad m => P m ()
+indentSpace :: PMonad m => P m ()
 indentSpace = try $  (count 4 (char ' ') >> return ())
                  <|> (char '\t' >> return ())
 
-nonindentSpace :: Monad m => P m ()
+nonindentSpace :: PMonad m => P m ()
 nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
   where onesp = () <$ char ' '
 
-anyLine :: Monad m => P m Text
+anyLine :: PMonad m => P m Text
 anyLine = cleanup . T.pack <$> many nonnl
   where cleanup t = if T.all iswhite t then T.empty else t
         iswhite c = c == ' ' || c == '\t'
 
-pCode :: Monad m => P m Blocks
+pCode :: PMonad m => P m Blocks
 pCode  = try $ do
   x <- indentSpace *> anyLine
   xs <- option [] $ pNewline *> sepBy ((indentSpace <|> eol) *> anyLine) pNewline
   return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
          $ Prelude.reverse (x:xs)
 
-pHrule :: Monad m => P m Blocks
+pHrule :: PMonad m => P m Blocks
 pHrule = try $ do
   sps
   c <- satisfy $ \x -> x == '*' || x == '-' || x == '_'
@@ -476,13 +486,13 @@ pHrule = try $ do
   return hrule
 
 -- redefined to include a 'try'
-sepBy :: Monad m => P m a -> P m b -> P m [a]
+sepBy :: PMonad m => P m a -> P m b -> P m [a]
 sepBy p sep = do
   x <- p
   xs <- many $ try (sep *> p)
   return (x:xs)
 
-pReference :: Monad m => P m Blocks
+pReference :: PMonad m => P m Blocks
 pReference = try $ do
   nonindentSpace
   k <- Key <$> pBracketedInlines
@@ -498,19 +508,19 @@ pReference = try $ do
 escapeURI :: Text -> Text
 escapeURI = T.pack . escapeURIString isAllowedInURI . B8.unpack . E.encodeUtf8
 
-pRefTitle :: Monad m => P m Text
+pRefTitle :: PMonad m => P m Text
 pRefTitle =  pRefTitleWith '\'' '\''
          <|> pRefTitleWith '"' '"'
          <|> pRefTitleWith '(' ')'
   where pRefTitleWith start end = T.pack <$> (char start *> manyTill nonnl
              (try $ char end *> lookAhead (() <$ spnl <|> eof)))
 
-pQuoted :: Monad m => P m String
+pQuoted :: PMonad m => P m String
 pQuoted = try $ quoteChar >>= \c ->
   manyTill (nonnl <|> '\n' <$ pNewline) (char c) >>= \r ->
     return (c : r ++ [c])
 
-pHtmlTag :: Monad m => P m ([Tag String], Text)
+pHtmlTag :: PMonad m => P m ([Tag String], Text)
 pHtmlTag = try $ do
   char '<'
   xs <- concat
@@ -520,7 +530,7 @@ pHtmlTag = try $ do
        (y:_) | isTagText y   -> mzero
        ys                    -> return (ys, T.pack t)
 
-pEntity :: Monad m => P m Inlines
+pEntity :: PMonad m => P m Inlines
 pEntity = try $ do
   char '&'
   x <- manyTill nonSpaceChar (char ';')
@@ -528,7 +538,7 @@ pEntity = try $ do
        Just c   -> return $ txt $ T.singleton c
        _        -> mzero
 
-pHtmlInline :: Monad m => P m Inlines
+pHtmlInline :: PMonad m => P m Inlines
 pHtmlInline = rawInline (Format "html") <$> (pHtmlComment <|> snd <$> pHtmlTag)
 
 blockTags :: [String]
@@ -539,16 +549,16 @@ blockTags = [ "address", "blockquote", "center", "dir", "div",
               "frameset", "li", "tbody", "td", "tfoot", "th",
               "thead", "tr", "script" ]
 
-pHtmlBlock :: Monad m => P m Blocks
+pHtmlBlock :: PMonad m => P m Blocks
 pHtmlBlock = rawBlock (Format "html") <$> (pHtmlComment <|> pHtmlBlockRaw)
 
-pHtmlComment :: Monad m => P m Text
+pHtmlComment :: PMonad m => P m Text
 pHtmlComment = try $ do
   string "<!--"
   x <- manyTill anyChar (try $ string "-->")
   return $ "<!--" <> T.pack x <> "-->"
 
-pHtmlBlockRaw :: Monad m => P m Text
+pHtmlBlockRaw :: PMonad m => P m Text
 pHtmlBlockRaw = try $ do
   pos <- getPosition
   guard $ sourceColumn pos == 1
@@ -565,7 +575,7 @@ pHtmlBlockRaw = try $ do
                w <- pTagClose tagname
                return $ x <> ws <> w
 
-pTagClose :: Monad m => String -> P m Text
+pTagClose :: PMonad m => String -> P m Text
 pTagClose tagname = try $ do
   (t,n) <- pHtmlTag
   case t of
