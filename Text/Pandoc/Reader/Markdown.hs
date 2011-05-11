@@ -3,6 +3,7 @@
 module Text.Pandoc.Reader.Markdown
 where
 import Text.Pandoc.Definition
+import Text.Pandoc.Parsing
 import Text.Pandoc.Builder
 import Data.Sequence as Seq
 import Data.Monoid
@@ -16,8 +17,6 @@ import qualified Data.Foldable as F
 import Text.Parsec hiding (sepBy, newline)
 import Control.Monad
 import Control.Monad.Trans
-import System.IO (hPutStrLn, stderr)
-import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as E
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Data.Generics.Uniplate.Operations (transformBi)
@@ -44,19 +43,6 @@ pstate = PState { sInInclude  = []
                 }
 
 type P m a = ParsecT Text (PState m) m a
-
-instance Monad m => Stream Text m Char where
-  uncons = return . T.uncons
-
-data LogLevel = DEBUG | INFO | WARNING | ERROR
-              deriving (Ord, Eq, Show, Read)
-
-data Message = Message LogLevel SourcePos Text
-
-instance Show Message where
-  show (Message level pos t) = show level ++ " (line " ++
-             show (sourceLine pos) ++ " col " ++
-             show (sourceColumn pos) ++ "): " ++ T.unpack t
 
 pushEndline :: PMonad m => P m () -> P m ()
 pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
@@ -159,34 +145,6 @@ pInclude = do
   modifyState $ \st -> st{ sInInclude = inIncludes }
   setInput old
   return bs
-
-data Result a = Success [Message] a
-              | Failure String
-              deriving Show
-
-instance Monad Result where
-  return x = Success [] x
-  fail   s = Failure s
-  Failure s    >>= _ = Failure s
-  Success ms x >>= f = case f x of
-                            Failure s      -> Failure s
-                            Success ms' x' -> Success (ms `mappend` ms') x'
-
-class Monad m => PMonad m where
-  addMessage :: Message -> m ()
-  getFile    :: FilePath -> m Text
-
-instance PMonad Result where
-  addMessage m = Success [m] ()
-  getFile    f = Failure $ "Cannot include file " ++ show f
-
-instance PMonad IO where
-  addMessage m = liftIO $ hPutStrLn stderr $ show m
-  getFile    f = liftIO $ T.readFile f
-
-instance PMonad Maybe where
-  addMessage _ = Just ()
-  getFile    _ = Nothing
 
 parseWith :: PMonad m => P m a -> Text -> m a
 parseWith p t = do
