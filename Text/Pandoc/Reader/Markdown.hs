@@ -186,7 +186,7 @@ instance PMonad IO where
 
 instance PMonad Maybe where
   addMessage _ = Just ()
-  getFile    f = Nothing
+  getFile    _ = Nothing
 
 parseWith :: PMonad m => P m a -> Text -> m a
 parseWith p t = do
