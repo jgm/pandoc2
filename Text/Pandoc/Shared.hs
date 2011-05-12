@@ -15,7 +15,7 @@ import Data.Text (Text)
 import Network.URI ( escapeURIString, isAllowedInURI )
 import qualified Data.Text as T
 
-data LogLevel = DEBUG | INFO | WARNING | ERROR
+data LogLevel = INFO | WARNING | ERROR
               deriving (Ord, Eq, Show, Read, Data, Typeable)
 
 data Message = Message LogLevel (Maybe SourcePos) Text
