@@ -1,6 +1,15 @@
 module Text.Pandoc.Shared where
+import Text.Pandoc.Definition
+import Text.Pandoc.Builder
+import qualified Data.Foldable as F
+import Data.Monoid
+import Data.Sequence as Seq
+import qualified Data.Text.Encoding as E
+import qualified Data.ByteString.Char8 as B8
 import Text.Parsec (SourcePos, sourceLine, sourceColumn)
+import Data.String
 import Data.Text (Text)
+import Network.URI ( escapeURIString, isAllowedInURI )
 import qualified Data.Text as T
 
 data LogLevel = DEBUG | INFO | WARNING | ERROR
@@ -25,4 +34,28 @@ poptions :: POptions
 poptions = POptions { optLogLevel  = WARNING
                     }
 
+-- | Trim leading and trailing Sp (spaces) from an Inlines.
+trimInlines :: Inlines -> Inlines
+trimInlines (Inlines ils) = Inlines $ dropWhileL (== Sp) $
+                            dropWhileR (== Sp) $ ils
+
+-- | Concatenate and trim inlines.
+toInlines :: [Inlines] -> Inlines
+toInlines = trimInlines . mconcat
+
+-- | Remove links from 'Inlines'.
+delink :: Inlines -> Inlines
+delink = Inlines . F.foldMap (unInlines . go) . unInlines
+  where go (Link _ (Ref { fallback = f })) = f
+        go (Link (Label lab) _)            = lab
+        go x                               = inline x
+
+-- | Escape a URI, converting to UTF-8 octets, then URI encoding them.
+escapeURI :: Text -> Text
+escapeURI = T.pack . escapeURIString isAllowedInURI .
+            B8.unpack . E.encodeUtf8
+
+-- | Version of 'show' that works for any 'IsString' instance.
+show' :: (Show a, IsString b) => a -> b
+show' = fromString . show
 

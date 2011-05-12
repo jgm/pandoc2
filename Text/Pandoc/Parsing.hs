@@ -5,10 +5,8 @@ where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder
 import Text.Pandoc.Shared
-import Data.String
 import Data.Traversable (sequenceA)
 import qualified Data.Map as M
-import qualified Data.Foldable as F
 import Data.Monoid
 import Control.Monad
 import Control.Monad.Trans
@@ -18,9 +16,6 @@ import System.IO (hPutStrLn, stderr)
 import Data.Text (Text)
 import Text.Parsec
 import Data.Sequence as Seq
-import Network.URI ( escapeURIString, isAllowedInURI )
-import qualified Data.Text.Encoding as E
-import qualified Data.ByteString.Char8 as B8
 import Control.Applicative ((<$>), (<$), (<*), (*>))
 
 instance Monad m => Stream Text m Char where
@@ -78,10 +73,6 @@ type P m a = ParsecT Text (PState m) m a
 -- | Retrieve parser option.
 getOption :: PMonad m => (POptions -> a) -> P m a
 getOption opt = opt <$> sOptions <$> getState
-
--- | Version of 'show' that works for any 'IsString' instance.
-show' :: (Show a, IsString b) => a -> b
-show' = fromString . show
 
 -- | Run a parser and handle messages.
 parseWith :: PMonad m => POptions -> P m a -> Text -> m a
@@ -259,11 +250,6 @@ text1Till :: Stream s m t
           -> ParsecT s u m Text
 text1Till p end = T.pack <$> many1Till p end
 
--- | Escape a URI, converting to UTF-8 octets, then URI encoding them.
-escapeURI :: Text -> Text
-escapeURI = T.pack . escapeURIString isAllowedInURI .
-            B8.unpack . E.encodeUtf8
-
 -- | Parse a space/tab combination that takes you to the next tab stop.
 indentSpace :: PMonad m => P m ()
 indentSpace = try $  (count 4 (char ' ') >> return ())
@@ -280,19 +266,3 @@ anyLine :: PMonad m => P m Text
 anyLine = cleanup . T.pack <$> many nonnl
   where cleanup t = if T.all iswhite t then T.empty else t
         iswhite c = c == ' ' || c == '\t'
-
--- | Trim leading and trailing Sp (spaces) from an Inlines.
-trimInlines :: Inlines -> Inlines
-trimInlines (Inlines ils) = Inlines $ dropWhileL (== Sp) $
-                            dropWhileR (== Sp) $ ils
-
--- | Concatenate and trim inlines.
-toInlines :: [Inlines] -> Inlines
-toInlines = trimInlines . mconcat
-
--- | Remove links from 'Inlines'.
-delink :: Inlines -> Inlines
-delink = Inlines . F.foldMap (unInlines . go) . unInlines
-  where go (Link _ (Ref { fallback = f })) = f
-        go (Link (Label lab) _)            = lab
-        go x                               = inline x

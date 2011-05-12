@@ -3,6 +3,7 @@
 module Text.Pandoc.Reader.Markdown
 where
 import Text.Pandoc.Definition
+import Text.Pandoc.Shared
 import Text.Pandoc.Parsing
 import Text.Pandoc.Builder
 import Data.Sequence as Seq
