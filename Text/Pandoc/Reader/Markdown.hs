@@ -109,7 +109,7 @@ pLink = try $ do
   ils <- pBracketedInlines
   guard $ ils /= mempty
   let lab = Label ils
-  let ref = Ref{ key = Key ils, fallback = txt "[" <> ils <> txt "]" }
+  let ref = Ref{ key = Key ils, fallback = "[" <> ils <> "]" }
   pExplicitLink lab <|> pReferenceLink lab ref
 
 pReferenceLink :: PMonad m => Label -> Source -> P m Inlines
@@ -119,7 +119,7 @@ pReferenceLink lab x = try $ do
                            (() <$ pEndline <|> skipMany1 spaceChar)
                    ils <- pBracketedInlines
                    let k' = if ils == mempty then key x else Key ils
-                   let f' = fallback x <> s <> txt "[" <> ils <> txt "]"
+                   let f' = fallback x <> s <> "[" <> ils <> "]"
                    return (k',f')
   return $ inline $ Link lab Ref{ key = k, fallback = fall }
 
@@ -135,8 +135,20 @@ pExplicitLink lab = try $ do
 
 pSource :: PMonad m => P m Text
 pSource = T.pack
-       <$> ((char '<' *> manyTill nonnl (char '>'))
-       <|> many (notFollowedBy (quoteChar <|> char ')') *> nonSpaceChar))
+       <$> ( (char '<' *> manyTill nonnl (char '>'))
+          <|> mconcat <$> many (  many1 (notFollowedBy paren *> nonSpaceChar)
+                               <|> inParens
+                               <|> count 1 (char '('))
+           )
+
+paren :: Monad m => P m Char
+paren = satisfy $ \c -> c == '(' || c == ')'
+
+inParens :: Monad m => P m String
+inParens = try $ do
+  char '('
+  xs <- manyTill anyChar (char ')')
+  return $ '(':xs ++ ")"
 
 pTitle :: PMonad m => P m Text
 pTitle = do
