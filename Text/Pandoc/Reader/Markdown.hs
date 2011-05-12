@@ -213,7 +213,7 @@ pHeaderSetext :: PMonad m => P m Blocks
 pHeaderSetext = try $ do
   -- lookahead to speed up parsing
   lookAhead $ skipMany nonnl *> pNewline *> setextChar
-  ils <- toInlines <$> many1Till pInline nl
+  ils <- toInlines <$> many1Till pInline pNewline
   c <- setextChar
   skipMany (char c)
   eol
