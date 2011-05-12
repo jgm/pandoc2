@@ -73,26 +73,26 @@ pSp = spaceChar *>
     )
 
 pAutolink :: PMonad m => P m Inlines
-pAutolink = mkLink <$> pUri <|> mkEmail <$> pEmail
-  where mkLink u = link (txt u) Source{ location = escapeURI u, title = "" }
+pAutolink = (mkLink <$> pUri) <|> (mkEmail <$> pEmail)
+  where mkLink u  = link (txt u) Source{ location = escapeURI u, title = "" }
         mkEmail u = link (txt u) Source{ location = escapeURI ("mailto:" <> u),
                                           title = "" }
 
 pEmail :: PMonad m => P m Text
 pEmail = try $ do
   char '<'
-  xs <- many1Till nonSpaceChar (char '@')
-  ys <- manyTill nonnl (char '>')
-  return $ T.pack xs <> T.singleton '@' <> T.pack ys
+  xs <- text1Till nonSpaceChar (char '@')
+  ys <- textTill nonSpaceChar (char '>')
+  return $ xs <> "@" <> ys
 
 pUri :: PMonad m => P m Text
 pUri = try $ do
   char '<'
-  xs <- many1Till nonSpaceChar (char ':')
-  guard $ map toLower xs `elem` ["http", "https", "ftp",
-                                 "file", "mailto", "news", "telnet" ]
-  ys <- manyTill nonnl (char '>')
-  return $ T.pack xs <> T.singleton ':' <> T.pack ys
+  xs <- text1Till nonSpaceChar (char ':')
+  guard $ T.toLower xs `elem` ["http", "https", "ftp",
+                               "file", "mailto", "news", "telnet" ]
+  ys <- textTill nonnl (char '>')
+  return $ xs <> ":" <> ys
 
 pBracketedInlines :: PMonad m => P m Inlines
 pBracketedInlines = try $

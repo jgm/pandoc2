@@ -268,6 +268,13 @@ textTill :: Stream s m t
          -> ParsecT s u m Text
 textTill p end = T.pack <$> manyTill p end
 
+-- | 'many1Till' specialized to 'Text'.
+text1Till :: Stream s m t
+          => ParsecT s u m Char
+          -> ParsecT s u m end
+          -> ParsecT s u m Text
+text1Till p end = T.pack <$> many1Till p end
+
 -- | Escape a URI, converting to UTF-8 octets, then URI encoding them.
 escapeURI :: Text -> Text
 escapeURI = T.pack . escapeURIString isAllowedInURI .
