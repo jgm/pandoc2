@@ -355,7 +355,7 @@ pRefTitle =  pRefTitleWith '\'' '\''
 
 pQuoted :: PMonad m => P m String
 pQuoted = try $ quoteChar >>= \c ->
-  manyTill (nonnl <|> '\n' <$ pNewline) (char c) >>= \r ->
+  manyTill (nonnl <|> '\n' <$ pEndline) (char c) >>= \r ->
     return (c : r ++ [c])
 
 pHtmlTag :: PMonad m => P m ([Tag String], Text)
