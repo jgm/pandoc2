@@ -44,7 +44,7 @@ handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
 -- Inline parsers
 
 pInline :: PMonad m => P m Inlines
-pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
+pInline = choice [ pTxt, pSp, pEndline, pFours, pStrong, pEmph, pVerbatim,
             pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSymbol ]
 
 pInlines :: PMonad m => P m Inlines
