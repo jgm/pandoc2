@@ -261,6 +261,13 @@ many1Till p q = do
   xs <- manyTill p q
   return (x:xs)
 
+-- | 'manyTill' specialized to 'Text'.
+textTill :: Stream s m t
+         => ParsecT s u m Char
+         -> ParsecT s u m end
+         -> ParsecT s u m Text
+textTill p end = T.pack <$> manyTill p end
+
 -- | Escape a URI, converting to UTF-8 octets, then URI encoding them.
 escapeURI :: Text -> Text
 escapeURI = T.pack . escapeURIString isAllowedInURI .
@@ -291,6 +298,4 @@ trimInlines (Inlines ils) = Inlines $ dropWhileL (== Sp) $
 -- | Concatenate and trim inlines.
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
-
-
 

@@ -23,9 +23,9 @@ pVerbatim :: PMonad m => P m Inlines
 pVerbatim = try $ do
   delim <- many1 (char '`')
   sps
-  verbatim . T.pack
-     <$> many1Till (nonnl <|> (' ' <$ (pNewline *> notFollowedBy spnl)))
-            (try $ sps *> string delim *> notFollowedBy (char '`'))
+  verbatim <$> textTill
+     (nonnl <|> (' ' <$ (pNewline *> notFollowedBy spnl)))
+     (try $ sps *> string delim *> notFollowedBy (char '`'))
 
 pInclude :: PMonad m => P m Blocks
 pInclude = do
@@ -120,7 +120,7 @@ pTitle :: PMonad m => P m Text
 pTitle = do
   c <- quoteChar
   let end = try $ char c *> lookAhead (sps *> char ')')
-  T.pack <$> manyTill anyChar end
+  textTill anyChar end
 
 pTxt :: PMonad m => P m Inlines
 pTxt = do
@@ -283,7 +283,7 @@ pReference = try $ do
   k <- Key <$> pBracketedInlines
   char ':'
   spOptNl
-  loc <- T.pack <$> many1 (satisfy $ \c -> c /= ' ' && c /= '\n' && c /= '\t')
+  loc <- T.pack <$> many1 nonSpaceChar
   tit <- option "" $ try $ spOptNl *> pRefTitle
   eol
   let src = Source{ location = escapeURI loc, title = tit }
@@ -294,20 +294,22 @@ pRefTitle :: PMonad m => P m Text
 pRefTitle =  pRefTitleWith '\'' '\''
          <|> pRefTitleWith '"' '"'
          <|> pRefTitleWith '(' ')'
-  where pRefTitleWith start end = T.pack <$> (char start *> manyTill nonnl
-             (try $ char end *> lookAhead (() <$ spnl <|> eof)))
+  where pRefTitleWith start end = char start *>
+          textTill nonnl (try $ char end *> eol)
 
 pHtmlInline :: PMonad m => P m Inlines
-pHtmlInline = rawInline (Format "html") <$> (pHtmlComment <|> snd <$> pHtmlTag)
+pHtmlInline = rawInline (Format "html")
+           <$> (pHtmlComment <|> snd <$> pHtmlTag)
 
 pHtmlBlock :: PMonad m => P m Blocks
-pHtmlBlock = rawBlock (Format "html") <$> (pHtmlComment <|> pHtmlBlockRaw)
+pHtmlBlock = rawBlock (Format "html")
+          <$> (pHtmlComment <|> pHtmlBlockRaw)
 
 pHtmlComment :: PMonad m => P m Text
 pHtmlComment = try $ do
   string "<!--"
-  x <- manyTill anyChar (try $ string "-->")
-  return $ "<!--" <> T.pack x <> "-->"
+  x <- textTill anyChar (try $ string "-->")
+  return $ "<!--" <> x <> "-->"
 
 pHtmlBlockRaw :: PMonad m => P m Text
 pHtmlBlockRaw = try $ do
