@@ -29,7 +29,7 @@ data Pandoc2 = Pandoc2
     deriving (Data,Typeable,Show,Eq)
 
 opts = Pandoc2
-    { tab_stop    = 4 &= help "Tab stop"
+    { tab_stop    = 4 &= groupname "Options" &= help "Tab stop"
     , files       = def &= args &= typ "FILE.."
     } &=
     program "pandoc2" &=
