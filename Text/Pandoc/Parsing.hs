@@ -59,18 +59,27 @@ instance PMonad Maybe where
   addMessage _ = Just ()
   getFile    _ = Nothing
 
+data POptions =
+  POptions { optLogLevel  :: LogLevel
+           }
+
+-- | Default parser options.
+poptions :: POptions
+poptions = POptions { optLogLevel  = WARNING
+                    }
+
 data PMonad m => PState m =
-  PState { sIncludes   :: [FilePath]
-         , sLogLevel   :: LogLevel
+  PState { sOptions    :: POptions
+         , sIncludes   :: [FilePath]
          , sEndline    :: Seq (P m ())
          , sBlockSep   :: Seq (P m ())
          , sReferences :: M.Map Key Source
          }
 
--- | Default PState values.
+-- | Default parser state.
 pstate :: PMonad m => PState m
-pstate = PState { sIncludes   = []
-                , sLogLevel   = WARNING
+pstate = PState { sOptions    = poptions
+                , sIncludes   = []
                 , sEndline    = Seq.empty
                 , sBlockSep   = Seq.empty
                 , sReferences = M.empty
@@ -78,14 +87,18 @@ pstate = PState { sIncludes   = []
 
 type P m a = ParsecT Text (PState m) m a
 
+-- | Retrieve parser option.
+getOption :: PMonad m => (POptions -> a) -> P m a
+getOption opt = opt <$> sOptions <$> getState
+
 -- | Version of 'show' that works for any 'IsString' instance.
 show' :: (Show a, IsString b) => a -> b
 show' = fromString . show
 
 -- | Run a parser and handle messages.
-parseWith :: PMonad m => P m a -> Text -> m a
-parseWith p t = do
-  res <- runParserT p pstate "input" t
+parseWith :: PMonad m => POptions -> P m a -> Text -> m a
+parseWith opts p t = do
+  res <- runParserT p pstate{ sOptions = opts } "input" t
   case res of
        Right x -> return x
        Left s  -> fail (show s)
@@ -93,7 +106,7 @@ parseWith p t = do
 -- | Log a message if the log level is appropriate.
 logM :: PMonad m => LogLevel -> Text -> P m ()
 logM level msg = do
-  logLevel <- fmap sLogLevel getState
+  logLevel <- getOption optLogLevel
   pos <- getPosition
   when (level >= logLevel) $
      lift $ addMessage $ Message level pos msg
