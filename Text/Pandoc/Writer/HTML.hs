@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving #-}
-module Text.Pandoc.Writer.HTML where
+module Text.Pandoc.Writer.HTML (docToHtml) where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder (textify)
 import Text.Blaze
