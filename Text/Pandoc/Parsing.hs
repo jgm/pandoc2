@@ -253,9 +253,44 @@ notFollowedBy' p  = try $ join $  do  a <- try p
                                   return (return ())
 -- (This version due to Andrew Pimlott on the Haskell mailing list.)
 
--- Escape a URI, converting to UTF-8 octets, then URI encoding them.
+-- | Like 'manyTill', but parses at least one element.
+many1Till :: Stream s m t
+          => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
+many1Till p q = do
+  x <- p
+  xs <- manyTill p q
+  return (x:xs)
+
+-- | Escape a URI, converting to UTF-8 octets, then URI encoding them.
 escapeURI :: Text -> Text
 escapeURI = T.pack . escapeURIString isAllowedInURI .
             B8.unpack . E.encodeUtf8
+
+-- | Parse a space/tab combination that takes you to the next tab stop.
+indentSpace :: PMonad m => P m ()
+indentSpace = try $  (count 4 (char ' ') >> return ())
+                 <|> (char '\t' >> return ())
+
+-- | Parse 0 or more spaces not sufficient to take you to the next tab
+-- stop.
+nonindentSpace :: PMonad m => P m ()
+nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
+  where onesp = () <$ char ' '
+
+-- | Parse a line of text, not including the newline.
+anyLine :: PMonad m => P m Text
+anyLine = cleanup . T.pack <$> many nonnl
+  where cleanup t = if T.all iswhite t then T.empty else t
+        iswhite c = c == ' ' || c == '\t'
+
+-- | Trim leading and trailing Sp (spaces) from an Inlines.
+trimInlines :: Inlines -> Inlines
+trimInlines (Inlines ils) = Inlines $ dropWhileL (== Sp) $
+                            dropWhileR (== Sp) $ ils
+
+-- | Concatenate and trim inlines.
+toInlines :: [Inlines] -> Inlines
+toInlines = trimInlines . mconcat
+
 
 

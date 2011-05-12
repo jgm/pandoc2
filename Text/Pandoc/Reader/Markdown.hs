@@ -37,9 +37,6 @@ pInline :: PMonad m => P m Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
                    pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSymbol ]
 
-toInlines :: [Inlines] -> Inlines
-toInlines = trimInlines . mconcat
-
 pInlines :: PMonad m => P m Inlines
 pInlines = toInlines <$> many1 pInline
 
@@ -74,13 +71,6 @@ pUri = try $ do
                                  "file", "mailto", "news", "telnet" ]
   ys <- manyTill nonnl (char '>')
   return $ T.pack xs <> T.singleton ':' <> T.pack ys
-
-many1Till :: Stream s m t
-          => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
-many1Till p q = do
-  x <- p
-  xs <- manyTill p q
-  return (x:xs)
 
 pBracketedInlines :: PMonad m => P m Inlines
 pBracketedInlines = try $
@@ -166,9 +156,6 @@ pStrong = strong <$>
           ulStart   = string "__" *> notFollowedBy (spaceChar <|> nl)
           ulEnd     = try (string "__")
 
-trimInlines :: Inlines -> Inlines
-trimInlines = Inlines . dropWhileL (== Sp) . dropWhileR (== Sp) . unInlines
-
 pDoc :: PMonad m => P m Blocks
 pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
 
@@ -195,9 +182,6 @@ pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
 pBlock :: PMonad m => P m Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
                  pHeader, pHtmlBlock, pInclude, pPara]
-
-pBlank :: PMonad m => P m Blocks
-pBlank = mempty <$ pNewlines
 
 pPara :: PMonad m => P m Blocks
 pPara = para <$> pInlines
@@ -277,19 +261,6 @@ enum :: PMonad m => P m Char
 enum = try $ nonindentSpace *> ('#' <$ many1 digit <|> char '#') <* char '.' <*
               (spaceChar <|> lookAhead (nl <|> '\n' <$ eof))
 
-indentSpace :: PMonad m => P m ()
-indentSpace = try $  (count 4 (char ' ') >> return ())
-                 <|> (char '\t' >> return ())
-
-nonindentSpace :: PMonad m => P m ()
-nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
-  where onesp = () <$ char ' '
-
-anyLine :: PMonad m => P m Text
-anyLine = cleanup . T.pack <$> many nonnl
-  where cleanup t = if T.all iswhite t then T.empty else t
-        iswhite c = c == ' ' || c == '\t'
-
 pCode :: PMonad m => P m Blocks
 pCode  = try $ do
   x <- indentSpace *> anyLine
@@ -326,34 +297,8 @@ pRefTitle =  pRefTitleWith '\'' '\''
   where pRefTitleWith start end = T.pack <$> (char start *> manyTill nonnl
              (try $ char end *> lookAhead (() <$ spnl <|> eof)))
 
-pHtmlTag :: PMonad m => P m ([Tag String], Text)
-pHtmlTag = try $ do
-  char '<'
-  xs <- concat
-    <$> manyTill (pQuoted <|> count 1 nonnl <|> "\n" <$ pNewline) (char '>')
-  let t = '<' : xs ++ ">"
-  case parseTags t of
-       (y:_) | isTagText y   -> mzero
-       ys                    -> return (ys, T.pack t)
-
-pEntity :: PMonad m => P m Inlines
-pEntity = try $ do
-  char '&'
-  x <- manyTill nonSpaceChar (char ';')
-  case lookupEntity x of
-       Just c   -> return $ txt $ T.singleton c
-       _        -> mzero
-
 pHtmlInline :: PMonad m => P m Inlines
 pHtmlInline = rawInline (Format "html") <$> (pHtmlComment <|> snd <$> pHtmlTag)
-
-blockTags :: [String]
-blockTags = [ "address", "blockquote", "center", "dir", "div",
-              "dl", "fieldset", "form", "h1", "h2", "h3",
-              "h4", "h5", "h6", "menu", "noframes", "noscript",
-              "ol", "p", "pre", "table", "ul", "dd", "dt",
-              "frameset", "li", "tbody", "td", "tfoot", "th",
-              "thead", "tr", "script" ]
 
 pHtmlBlock :: PMonad m => P m Blocks
 pHtmlBlock = rawBlock (Format "html") <$> (pHtmlComment <|> pHtmlBlockRaw)
@@ -380,6 +325,32 @@ pHtmlBlockRaw = try $ do
        _ -> do ws <- mconcat <$> many chunk
                w <- pTagClose tagname
                return $ x <> ws <> w
+
+blockTags :: [String]
+blockTags = [ "address", "blockquote", "center", "dir", "div",
+              "dl", "fieldset", "form", "h1", "h2", "h3",
+              "h4", "h5", "h6", "menu", "noframes", "noscript",
+              "ol", "p", "pre", "table", "ul", "dd", "dt",
+              "frameset", "li", "tbody", "td", "tfoot", "th",
+              "thead", "tr", "script" ]
+
+pHtmlTag :: PMonad m => P m ([Tag String], Text)
+pHtmlTag = try $ do
+  char '<'
+  xs <- concat
+    <$> manyTill (pQuoted <|> count 1 nonnl <|> "\n" <$ pNewline) (char '>')
+  let t = '<' : xs ++ ">"
+  case parseTags t of
+       (y:_) | isTagText y   -> mzero
+       ys                    -> return (ys, T.pack t)
+
+pEntity :: PMonad m => P m Inlines
+pEntity = try $ do
+  char '&'
+  x <- manyTill nonSpaceChar (char ';')
+  case lookupEntity x of
+       Just c   -> return $ txt $ T.singleton c
+       _        -> mzero
 
 pTagClose :: PMonad m => String -> P m Text
 pTagClose tagname = try $ do
