@@ -2,6 +2,7 @@
 module Text.Pandoc.Writer.HTML (docToHtml) where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder (textify)
+import Text.Pandoc.Shared (POptions)
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -14,7 +15,7 @@ import Control.Monad.State
 import Control.Applicative
 import Control.Monad
 
-data WriterState = WriterState {  }
+data WriterState = WriterState { wOptions :: POptions }
 
 newtype Monoid a => W a = W { unW :: State WriterState a }
             deriving (Monad)
@@ -29,8 +30,9 @@ instance Functor W where
 nl :: W Html
 nl = return $ preEscapedText "\n"
 
-docToHtml :: Blocks -> Html
-docToHtml bs = evalState (unW $ blocksToHtml bs) WriterState{ }
+docToHtml :: POptions -> Blocks -> Html
+docToHtml opts bs = evalState (unW $ blocksToHtml bs)
+                    WriterState{ wOptions = opts }
 
 blocksToHtml :: Blocks -> W Html
 blocksToHtml = F.foldMap (\b -> blockToHtml b <> nl) . unBlocks

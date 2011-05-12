@@ -9,7 +9,7 @@ main :: IO ()
 main = do
   args <- getArgs
   let convert x = parseWith poptions pDoc x
-                  >>= renderHtmlToByteStringIO B.putStr . docToHtml
+                  >>= renderHtmlToByteStringIO B.putStr . docToHtml poptions
   case args of
        [] -> B.getContents >>= convert . convertTabs. decodeUtf8
        _  -> mapM_
