@@ -326,10 +326,14 @@ pHtmlComment = try $ do
   x <- textTill anyChar (try $ string "-->")
   return $ "<!--" <> x <> "-->"
 
-pHtmlBlockRaw :: PMonad m => P m Text
-pHtmlBlockRaw = try $ do
+pInColumn1 :: Monad m => P m ()
+pInColumn1 = do
   pos <- getPosition
   guard $ sourceColumn pos == 1
+
+pHtmlBlockRaw :: PMonad m => P m Text
+pHtmlBlockRaw = try $ do
+  pInColumn1
   (t:ts, x) <- pHtmlTag
   guard $ isTagOpen t
   tagname <- case t of
@@ -340,12 +344,13 @@ pHtmlBlockRaw = try $ do
   case ts of
        [TagClose s] | map toLower s == tagname -> return x
        _ -> do ws <- mconcat <$> many chunk
-               w <- pTagClose tagname
+               w  <- pInColumn1 *> pTagClose tagname
+               eol
                return $ x <> ws <> w
 
 blockTags :: [String]
-blockTags = [ "address", "blockquote", "center", "dir", "div",
-              "dl", "fieldset", "form", "h1", "h2", "h3",
+blockTags = [ "address", "blockquote", "center", "del", "dir", "div",
+              "dl", "fieldset", "form", "ins", "h1", "h2", "h3",
               "h4", "h5", "h6", "menu", "noframes", "noscript",
               "ol", "p", "pre", "table", "ul", "dd", "dt",
               "frameset", "li", "tbody", "td", "tfoot", "th",
