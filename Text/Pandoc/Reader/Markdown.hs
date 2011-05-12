@@ -26,12 +26,6 @@ pVerbatim = try $ do
   let end = try $ sps *> string delim *> notFollowedBy (char '`')
   verbatim <$> textTill (nonnl <|> (' ' <$ pEndline)) end
 
-pInclude :: PMonad m => P m Blocks
-pInclude = do
-  f <- try (string "\\include{" *> manyTill anyChar (char '}'))
-  parseIncludeFile f $
-    skipMany pNewline *> pBlocks <* skipMany pNewline <* eof
-
 pInline :: PMonad m => P m Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
                    pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSymbol ]
@@ -180,7 +174,7 @@ pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
 
 pBlock :: PMonad m => P m Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
-                 pHeader, pHtmlBlock, pInclude, pPara]
+                 pHeader, pHtmlBlock, pPara]
 
 pPara :: PMonad m => P m Blocks
 pPara = para <$> pInlines
