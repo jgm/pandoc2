@@ -99,20 +99,8 @@ nonSpaceChar = satisfy  (\c -> c /= ' ' && c /= '\n' && c /= '\t')
 pInclude :: PMonad m => P m Blocks
 pInclude = do
   f <- try (string "\\include{" *> manyTill anyChar (char '}'))
-  inIncludes <- sIncludes <$> getState
-  when (f `elem` inIncludes) $
-    error $ "Recursive include in " <> show f
-  modifyState $ \st -> st{ sIncludes = f : inIncludes }
-  old <- getInput
-  -- getFile <- sGetFile <$> getState
-  lift (getFile f) >>= setInput
-  skipMany pNewline
-  bs <- pBlocks
-  skipMany pNewline
-  eof
-  modifyState $ \st -> st{ sIncludes = inIncludes }
-  setInput old
-  return bs
+  parseIncludeFile f $
+    skipMany pNewline *> pBlocks <* skipMany pNewline <* eof
 
 pInline :: PMonad m => P m Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,

@@ -111,3 +111,21 @@ logM level msg = do
   when (level >= logLevel) $
      lift $ addMessage $ Message level pos msg
 
+-- | Parse contents of a file with the specified parser.
+parseIncludeFile :: PMonad m => FilePath -> P m a -> P m a
+parseIncludeFile f parser = do
+  inIncludes <- sIncludes <$> getState
+  when (f `elem` inIncludes) $
+    error $ "Recursive include in " ++ show f
+  -- Keep track of filename so we can avoid recursive includes
+  modifyState $ \st -> st{ sIncludes = f : inIncludes }
+  old <- getInput
+  -- set input and parse
+  lift (getFile f) >>= setInput
+  res <- parser
+  -- put everything back as it was and return results of parsing
+  modifyState $ \st -> st{ sIncludes = inIncludes }
+  setInput old
+  return res
+
+
