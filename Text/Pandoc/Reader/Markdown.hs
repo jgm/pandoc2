@@ -23,9 +23,8 @@ pVerbatim :: PMonad m => P m Inlines
 pVerbatim = try $ do
   delim <- many1 (char '`')
   sps
-  verbatim <$> textTill
-     (nonnl <|> (' ' <$ (pNewline *> notFollowedBy spnl)))
-     (try $ sps *> string delim *> notFollowedBy (char '`'))
+  let end = try $ sps *> string delim *> notFollowedBy (char '`')
+  verbatim <$> textTill (nonnl <|> (' ' <$ pEndline)) end
 
 pInclude :: PMonad m => P m Blocks
 pInclude = do
