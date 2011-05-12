@@ -11,14 +11,11 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Char (toLower)
-import qualified Data.ByteString.Char8 as B8
 import qualified Data.Foldable as F
 import Text.Parsec hiding (sepBy)
 import Control.Monad
-import qualified Data.Text.Encoding as E
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Data.Generics.Uniplate.Operations (transformBi)
-import Network.URI ( escapeURIString, isAllowedInURI )
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Entity (lookupEntity)
 
@@ -129,9 +126,6 @@ pSource = T.pack
        <$> ((char '<' *> manyTill nonnl (char '>'))
        <|> many (notFollowedBy (quoteChar <|> char ')') *> nonSpaceChar))
 
-quoteChar :: PMonad m => P m Char
-quoteChar = satisfy $ \c -> c == '\'' || c == '"'
-
 pTitle :: PMonad m => P m Text
 pTitle = do
   c <- quoteChar
@@ -147,17 +141,6 @@ pTxt = do
 
 pInlinesBetween :: PMonad m => P m a -> P m b -> P m Inlines
 pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
-
--- | A more general form of @notFollowedBy@.  This one allows any~
--- type of parser to be specified, and succeeds only if that parser fails.
--- It does not consume any input.
-notFollowedBy' :: (Stream s m t, Show b)
-               => ParsecT s u m b -> ParsecT s u m ()
-notFollowedBy' p  = try $ join $  do  a <- try p
-                                      return (unexpected (show a))
-                                  <|>
-                                  return (return ())
--- (This version due to Andrew Pimlott on the Haskell mailing list.)
 
 pFours :: PMonad m => P m Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
@@ -323,13 +306,6 @@ pHrule = try $ do
   eol
   return hrule
 
--- redefined to include a 'try'
-sepBy :: PMonad m => P m a -> P m b -> P m [a]
-sepBy p sep = do
-  x <- p
-  xs <- many $ try (sep *> p)
-  return (x:xs)
-
 pReference :: PMonad m => P m Blocks
 pReference = try $ do
   nonindentSpace
@@ -343,20 +319,12 @@ pReference = try $ do
   modifyState $ \st -> st{ sReferences = M.insert k src $ sReferences st }
   return mempty
 
-escapeURI :: Text -> Text
-escapeURI = T.pack . escapeURIString isAllowedInURI . B8.unpack . E.encodeUtf8
-
 pRefTitle :: PMonad m => P m Text
 pRefTitle =  pRefTitleWith '\'' '\''
          <|> pRefTitleWith '"' '"'
          <|> pRefTitleWith '(' ')'
   where pRefTitleWith start end = T.pack <$> (char start *> manyTill nonnl
              (try $ char end *> lookAhead (() <$ spnl <|> eof)))
-
-pQuoted :: PMonad m => P m String
-pQuoted = try $ quoteChar >>= \c ->
-  manyTill (nonnl <|> '\n' <$ pEndline) (char c) >>= \r ->
-    return (c : r ++ [c])
 
 pHtmlTag :: PMonad m => P m ([Tag String], Text)
 pHtmlTag = try $ do

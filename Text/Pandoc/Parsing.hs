@@ -16,6 +16,9 @@ import System.IO (hPutStrLn, stderr)
 import Data.Text (Text)
 import Text.Parsec
 import Data.Sequence as Seq
+import Network.URI ( escapeURIString, isAllowedInURI )
+import qualified Data.Text.Encoding as E
+import qualified Data.ByteString.Char8 as B8
 import Control.Applicative ((<$>), (<$), (<*), (*>))
 
 instance Monad m => Stream Text m Char where
@@ -215,8 +218,44 @@ spOptNl = try $ sps <* optional (pEndline <* sps)
 spaceChar :: Monad m => P m Char
 spaceChar = satisfy $ \c -> c == ' ' || c == '\t'
 
--- Parses anything other than a space, tab, CR, or LF.
+-- | Parses anything other than a space, tab, CR, or LF.
 nonSpaceChar :: Monad m => P m Char
 nonSpaceChar = satisfy  $ \c ->
   c /= ' ' && c /= '\n' && c /= '\r' && c /= '\t'
+
+-- | Parses a quote character.
+quoteChar :: Monad m => P m Char
+quoteChar = satisfy $ \c -> c == '\'' || c == '"'
+
+-- | Parses a string of text between quote characters.
+-- Returns the string and the quotes.
+pQuoted :: PMonad m => P m String
+pQuoted = try $ quoteChar >>= \c ->
+  manyTill (nonnl <|> ' ' <$ pEndline) (char c) >>= \r ->
+    return (c : r ++ [c])
+
+-- | 'sepBy' redefined to include a 'try', so the separator
+-- can fail.
+sepBy :: PMonad m => P m a -> P m b -> P m [a]
+sepBy p sep = do
+  x <- p
+  xs <- many $ try (sep *> p)
+  return (x:xs)
+
+-- | A more general form of @notFollowedBy@.  This one allows any
+-- type of parser to be specified, and succeeds only if that parser
+-- fails. It does not consume any input.
+notFollowedBy' :: (Stream s m t, Show b)
+               => ParsecT s u m b -> ParsecT s u m ()
+notFollowedBy' p  = try $ join $  do  a <- try p
+                                      return (unexpected (show a))
+                                  <|>
+                                  return (return ())
+-- (This version due to Andrew Pimlott on the Haskell mailing list.)
+
+-- Escape a URI, converting to UTF-8 octets, then URI encoding them.
+escapeURI :: Text -> Text
+escapeURI = T.pack . escapeURIString isAllowedInURI .
+            B8.unpack . E.encodeUtf8
+
 
