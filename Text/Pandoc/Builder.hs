@@ -16,8 +16,8 @@ inline = Inlines . singleton
 txt :: Text -> Inlines
 txt = inline . Txt
 
-sp :: Inlines
-sp = inline Sp
+(<+>) :: Inlines -> Inlines -> Inlines
+x <+> y = x <> inline Sp <> y
 
 emph :: Inlines -> Inlines
 emph = inline . Emph
