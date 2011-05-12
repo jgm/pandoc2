@@ -166,25 +166,24 @@ pTxt = do
 pFours :: PMonad m => P m Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   x <- (char '*' <|> char '_')
-  y <- char x
-  z <- char x
+  count 2 $ char x
   rest <- many1 (char x)
-  return $ txt $ T.pack $ x : y : z : rest
+  return $ txt $ T.pack $ x : x : x : rest
 
 pEmph :: PMonad m => P m Inlines
 pEmph = emph <$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
-    where starStart = char '*' *> notFollowedBy (spaceChar <|> nl)
+    where starStart = char '*' *> lookAhead nonSpaceChar
           starEnd   = notFollowedBy' pStrong *> char '*'
-          ulStart   = char '_' *> notFollowedBy (spaceChar <|> nl)
+          ulStart   = char '_' *> lookAhead nonSpaceChar
           ulEnd     = notFollowedBy' pStrong *> char '_'
 
 pStrong :: PMonad m => P m Inlines
 pStrong = strong <$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
-    where starStart = string "**" *> notFollowedBy (spaceChar <|> nl)
+    where starStart = string "**" *> lookAhead nonSpaceChar
           starEnd   = try (string "**")
-          ulStart   = string "__" *> notFollowedBy (spaceChar <|> nl)
+          ulStart   = string "__" *> lookAhead nonSpaceChar
           ulEnd     = try (string "__")
 
 -- Block parsers
