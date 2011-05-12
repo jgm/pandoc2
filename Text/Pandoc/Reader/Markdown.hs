@@ -228,7 +228,7 @@ pListItem start = try $ do
   n <- option 0 pNewlines
   start
   withBlockSep (indentSpace <|> eol) $
-    withEndline (notFollowedBy $ skipMany spaceChar *> listStart) $ do
+    withEndline (notFollowedBy $ sps *> listStart) $ do
       option ' ' $ char ' ' *> (option ' ' $ char ' ')
       Blocks bs <- mconcat
                 <$> (pBlock `sepBy` (pNewlines >> notFollowedBy spnl))
