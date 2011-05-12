@@ -129,9 +129,12 @@ parseIncludeFile f parser = do
   setInput old
   return res
 
+-- | Push parser onto stack of endline parsers.
+-- These are applied after a newline within a block.
 pushEndline :: PMonad m => P m () -> P m ()
 pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
 
+-- | Pop parser off stack of endline parsers.
 popEndline :: PMonad m => P m ()
 popEndline = do
   st <- getState
@@ -139,12 +142,16 @@ popEndline = do
         EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
         ps :> _ -> setState st{ sEndline = ps }
 
+-- | Apply a parser in a context with a specified endline parser.
 withEndline :: PMonad m => P m a -> P m b -> P m b
-withEndline sep p = pushEndline (sep *> return ()) *> p <* popEndline
+withEndline sep p = pushEndline (() <$ sep) *> p <* popEndline
 
+-- | Push parser onto stack of block separator parsers.
+-- These are applied after a newline following a block.
 pushBlockSep :: PMonad m => P m () -> P m ()
 pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
 
+-- | Pop parser off of stack of block separator parsers.
 popBlockSep :: PMonad m => P m ()
 popBlockSep = do
   st <- getState
@@ -152,44 +159,64 @@ popBlockSep = do
         EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
         ps :> _ -> setState st{ sBlockSep = ps }
 
+-- | Apply a parser in a context with specified block separator parser.
 withBlockSep :: PMonad m => P m a -> P m b -> P m b
-withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
+withBlockSep sep p = pushBlockSep (() <$ sep) *> p <* popBlockSep
 
+-- | Parse a block separator.
 pBlockSep :: PMonad m => P m ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
+-- | Parse multiple block-separating line breaks. Return number of
+-- newlines parsed.
 pNewlines :: PMonad m => P m Int
 pNewlines = Prelude.length <$> many1 pNewline
 
-pNewline :: PMonad m => P m Int
-pNewline = try $ spnl *> pBlockSep *> return 1
+-- | Parse a block-separating line break.
+pNewline :: PMonad m => P m ()
+pNewline = try $ spnl *> pBlockSep
 
+-- | Parse a line break within a block, including characters
+-- at the beginning of the next line that are part of the block
+-- context. Return a Space.
 pEndline :: PMonad m => P m Inlines
 pEndline = try $
   nl *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
   lookAhead nonnl *> return (inline Sp)
 
-nonnl :: PMonad m => P m Char
+-- | Parse a non-newline character.
+nonnl :: Monad m => P m Char
 nonnl = satisfy $ \c -> c /= '\n' && c /= '\r'
 
-sps :: PMonad m => P m ()
+-- | Skip 0 or more spaces or tabs.
+sps :: Monad m => P m ()
 sps = skipMany spaceChar
 
-nl :: PMonad m => P m Char
+-- | Parse a newline (CR, CRLF, LF).
+nl :: Monad m => P m Char
 nl = char '\n' <|> (char '\r' <* option '\n' (char '\n'))
 
-spnl :: PMonad m => P m ()
+-- | Skip any spaces, then parse a newline.
+spnl :: Monad m => P m ()
 spnl = try $ sps <* nl
 
-eol :: PMonad m => P m ()
+-- | Succeeds if we're at the end of a line (skipping
+-- line-ending spaces if present). Does not parse the newline.
+eol :: Monad m => P m ()
 eol = sps *> lookAhead (() <$ nl <|> eof)
 
+-- | Parses line-ending spaces, if present, and optionally
+-- an endline followed by any spaces at the beginning of
+-- the next line.
 spOptNl :: PMonad m => P m ()
-spOptNl = try $ sps <* optional (pNewline <* sps)
+spOptNl = try $ sps <* optional (pEndline <* sps)
 
-spaceChar :: PMonad m => P m Char
-spaceChar = satisfy (\c -> c == ' ' || c == '\t')
+-- | Parses a space or tab.
+spaceChar :: Monad m => P m Char
+spaceChar = satisfy $ \c -> c == ' ' || c == '\t'
 
-nonSpaceChar :: PMonad m => P m Char
-nonSpaceChar = satisfy  (\c -> c /= ' ' && c /= '\n' && c /= '\t')
+-- Parses anything other than a space, tab, CR, or LF.
+nonSpaceChar :: Monad m => P m Char
+nonSpaceChar = satisfy  $ \c ->
+  c /= ' ' && c /= '\n' && c /= '\r' && c /= '\t'
 
