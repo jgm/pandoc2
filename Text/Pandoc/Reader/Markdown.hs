@@ -19,19 +19,46 @@ import Data.Generics.Uniplate.Operations (transformBi)
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Entity (lookupEntity)
 
+-- Document-level parsers
+
+pDoc :: PMonad m => P m Blocks
+pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
+
+resolveRefs :: PMonad m => Blocks -> P m Blocks
+resolveRefs bs = do
+  refs <- sReferences <$> getState
+  return $ transformBi (handleRef refs) bs
+
+handleRef :: M.Map Key Source -> Inlines -> Inlines
+handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
+  where go (Link  lab Ref{ key = k, fallback = ils }) =
+          case M.lookup k refs of
+                 Just s  -> singleton $ Link lab s
+                 Nothing -> unInlines ils
+        go (Image lab Ref{ key = k, fallback = ils }) =
+          case M.lookup k refs of
+                 Just s  -> singleton $ Image lab s
+                 Nothing -> unInlines ils
+        go x = singleton x
+
+-- Inline parsers
+
+pInline :: PMonad m => P m Inlines
+pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
+            pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSymbol ]
+
+pInlines :: PMonad m => P m Inlines
+pInlines = toInlines <$> many1 pInline
+
+pInlinesBetween :: PMonad m => P m a -> P m b -> P m Inlines
+pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
+
 pVerbatim :: PMonad m => P m Inlines
 pVerbatim = try $ do
   delim <- many1 (char '`')
   sps
   let end = try $ sps *> string delim *> notFollowedBy (char '`')
   verbatim <$> textTill (nonnl <|> (' ' <$ pEndline)) end
-
-pInline :: PMonad m => P m Inlines
-pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,
-                   pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSymbol ]
-
-pInlines :: PMonad m => P m Inlines
-pInlines = toInlines <$> many1 pInline
 
 pEscaped :: PMonad m => P m Inlines
 pEscaped = txt . T.singleton <$> (try $ char '\\' *> oneOf "\\`*_{}[]()>#+-.!~")
@@ -40,8 +67,10 @@ pSymbol :: PMonad m => P m Inlines
 pSymbol = txt . T.singleton <$> nonnl
 
 pSp :: PMonad m => P m Inlines
-pSp = spaceChar *> (  skipMany1 spaceChar *> ((lineBreak <$ pEndline) <|> return (inline Sp))
-                  <|> return (inline Sp))
+pSp = spaceChar *>
+    (  skipMany1 spaceChar *> ((lineBreak <$ pEndline) <|> return mempty)
+   <|> return (inline Sp)
+    )
 
 pAutolink :: PMonad m => P m Inlines
 pAutolink = mkLink <$> pUri <|> mkEmail <$> pEmail
@@ -122,9 +151,6 @@ pTxt = do
   xs <- many txtchar
   return $ txt $ T.pack (x:xs)
 
-pInlinesBetween :: PMonad m => P m a -> P m b -> P m Inlines
-pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
-
 pFours :: PMonad m => P m Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   x <- (char '*' <|> char '_')
@@ -149,32 +175,14 @@ pStrong = strong <$>
           ulStart   = string "__" *> notFollowedBy (spaceChar <|> nl)
           ulEnd     = try (string "__")
 
-pDoc :: PMonad m => P m Blocks
-pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
-
-resolveRefs :: PMonad m => Blocks -> P m Blocks
-resolveRefs bs = do
-  refs <- sReferences <$> getState
-  return $ transformBi (handleRef refs) bs
-
-handleRef :: M.Map Key Source -> Inlines -> Inlines
-handleRef refs (Inlines xs) = Inlines $ F.foldMap go xs
-  where go (Link  lab Ref{ key = k, fallback = ils }) =
-          case M.lookup k refs of
-                 Just s  -> singleton $ Link lab s
-                 Nothing -> unInlines ils
-        go (Image lab Ref{ key = k, fallback = ils }) =
-          case M.lookup k refs of
-                 Just s  -> singleton $ Image lab s
-                 Nothing -> unInlines ils
-        go x = singleton x
-
-pBlocks :: PMonad m => P m Blocks
-pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
+-- Block parsers
 
 pBlock :: PMonad m => P m Blocks
 pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
                  pHeader, pHtmlBlock, pPara]
+
+pBlocks :: PMonad m => P m Blocks
+pBlocks = mconcat <$> option [] (pBlock `sepBy` pNewlines)
 
 pPara :: PMonad m => P m Blocks
 pPara = para <$> pInlines
@@ -289,6 +297,8 @@ pRefTitle =  pRefTitleWith '\'' '\''
          <|> pRefTitleWith '(' ')'
   where pRefTitleWith start end = char start *>
           textTill nonnl (try $ char end *> eol)
+
+-- HTML related parsers
 
 pHtmlInline :: PMonad m => P m Inlines
 pHtmlInline = rawInline (Format "html")
