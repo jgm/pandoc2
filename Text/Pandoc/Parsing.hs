@@ -4,6 +4,7 @@ module Text.Pandoc.Parsing
 where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder
+import Text.Pandoc.Shared
 import Data.String
 import Data.Traversable (sequenceA)
 import qualified Data.Map as M
@@ -25,16 +26,6 @@ import Control.Applicative ((<$>), (<$), (<*), (*>))
 instance Monad m => Stream Text m Char where
   uncons = return . T.uncons
 
-data LogLevel = DEBUG | INFO | WARNING | ERROR
-              deriving (Ord, Eq, Show, Read)
-
-data Message = Message LogLevel SourcePos Text
-
-instance Show Message where
-  show (Message level pos t) = show level ++ " (line " ++
-             show (sourceLine pos) ++ " col " ++
-             show (sourceColumn pos) ++ "): " ++ T.unpack t
-
 data Result a = Success [Message] a
               | Failure String
               deriving Show
@@ -54,7 +45,8 @@ class Monad m => PMonad m where
 
 instance PMonad Result where
   addMessage m = Success [m] ()
-  getFile    f = Failure $ "Cannot include file " ++ show f
+  getFile    f = Success [Message WARNING Nothing $
+                    "Skipping include file " <> show' f] mempty
 
 instance PMonad IO where
   addMessage m = liftIO $ hPutStrLn stderr $ show m
@@ -63,15 +55,6 @@ instance PMonad IO where
 instance PMonad Maybe where
   addMessage _ = Just ()
   getFile    _ = Nothing
-
-data POptions =
-  POptions { optLogLevel  :: LogLevel
-           }
-
--- | Default parser options.
-poptions :: POptions
-poptions = POptions { optLogLevel  = WARNING
-                    }
 
 data PMonad m => PState m =
   PState { sOptions    :: POptions
@@ -114,7 +97,7 @@ logM level msg = do
   logLevel <- getOption optLogLevel
   pos <- getPosition
   when (level >= logLevel) $
-     lift $ addMessage $ Message level pos msg
+     lift $ addMessage $ Message level (Just pos) msg
 
 -- | Parse contents of a file with the specified parser.
 parseIncludeFile :: PMonad m => FilePath -> P m a -> P m a
