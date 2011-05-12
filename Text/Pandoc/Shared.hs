@@ -1,7 +1,10 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Text.Pandoc.Shared where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder
 import qualified Data.Foldable as F
+import Data.Data
 import Data.Monoid
 import Data.Sequence as Seq
 import qualified Data.Text.Encoding as E
@@ -13,7 +16,7 @@ import Network.URI ( escapeURIString, isAllowedInURI )
 import qualified Data.Text as T
 
 data LogLevel = DEBUG | INFO | WARNING | ERROR
-              deriving (Ord, Eq, Show, Read)
+              deriving (Ord, Eq, Show, Read, Data, Typeable)
 
 data Message = Message LogLevel (Maybe SourcePos) Text
 

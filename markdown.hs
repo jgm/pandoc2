@@ -10,21 +10,23 @@ import System.Console.CmdArgs
 main :: IO ()
 main = do
   opts <- cmdArgs markdownOpts
-  let tabstop = tab_stop opts
-  let convert x = parseWith poptions pDoc (convertTabs tabstop $ decodeUtf8 x)
+  let convert x = parseWith poptions pDoc
+                  (convertTabs (tab_stop opts) $ decodeUtf8 x)
                   >>= renderHtmlToByteStringIO B.putStr . docToHtml poptions
   case files opts of
        [] -> B.getContents >>= convert
        fs -> mapM_ (\f -> B.readFile f >>= convert) fs
 
 data Markdown = Markdown
-    { tab_stop     :: Int
+    { tab_stop    :: Int
+    , log_level   :: LogLevel
     , files       :: [FilePath]
     }
     deriving (Data,Typeable,Show,Eq)
 
 markdownOpts = Markdown
-    { tab_stop    = def &= groupname "Options" &= opt (4 :: Int) &= help "Tab stop"
+    { tab_stop    = 4 &= help "Tab stop"
+    , log_level   = WARNING &= help "Severity of messages to log"
     , files       = def &= args &= typ "FILE.."
     } &=
     -- verbosity &=
