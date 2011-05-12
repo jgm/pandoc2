@@ -96,25 +96,13 @@ spaceChar = satisfy (\c -> c == ' ' || c == '\t')
 nonSpaceChar :: PMonad m => P m Char
 nonSpaceChar = satisfy  (\c -> c /= ' ' && c /= '\n' && c /= '\t')
 
-showText :: Show a => a -> Text
-showText = T.pack . show
-
-logM :: PMonad m => LogLevel -> Text -> P m ()
-logM level msg = do
-  logLevel <- fmap sLogLevel getState
-  pos <- getPosition
-  msgs <- sMessages <$> getState
-  if level >= logLevel
-     then modifyState $ \st -> st{ sMessages = msgs |> Message level pos msg }
-     else return ()
-
 pInclude :: PMonad m => P m Blocks
 pInclude = do
   f <- try (string "\\include{" *> manyTill anyChar (char '}'))
-  inIncludes <- sInInclude <$> getState
+  inIncludes <- sIncludes <$> getState
   when (f `elem` inIncludes) $
     error $ "Recursive include in " <> show f
-  modifyState $ \st -> st{ sInInclude = f : inIncludes }
+  modifyState $ \st -> st{ sIncludes = f : inIncludes }
   old <- getInput
   -- getFile <- sGetFile <$> getState
   lift (getFile f) >>= setInput
@@ -122,19 +110,9 @@ pInclude = do
   bs <- pBlocks
   skipMany pNewline
   eof
-  modifyState $ \st -> st{ sInInclude = inIncludes }
+  modifyState $ \st -> st{ sIncludes = inIncludes }
   setInput old
   return bs
-
-parseWith :: PMonad m => P m a -> Text -> m a
-parseWith p t = do
-  let p' = do x <- p
-              msgs <- sMessages <$> getState
-              return (F.toList msgs, x)
-  res <- runParserT p' pstate "input" t
-  case res of
-       Right (msgs, x) -> mapM_ addMessage msgs >> return x
-       Left s          -> fail (show s)
 
 pInline :: PMonad m => P m Inlines
 pInline = choice [ pSp, pTxt, pEndline, pFours, pStrong, pEmph, pVerbatim,

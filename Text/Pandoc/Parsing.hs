@@ -3,6 +3,7 @@
 module Text.Pandoc.Parsing
 where
 import Text.Pandoc.Definition
+import Data.String
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad
@@ -13,6 +14,8 @@ import System.IO (hPutStrLn, stderr)
 import Data.Text (Text)
 import Text.Parsec
 import Data.Sequence as Seq
+import Control.Applicative ((<$>), (<$), (<*), (*>))
+import qualified Data.Foldable as F
 
 instance Monad m => Stream Text m Char where
   uncons = return . T.uncons
@@ -35,9 +38,10 @@ instance Monad Result where
   return x = Success [] x
   fail   s = Failure s
   Failure s    >>= _ = Failure s
-  Success ms x >>= f = case f x of
-                            Failure s      -> Failure s
-                            Success ms' x' -> Success (ms `mappend` ms') x'
+  Success ms x >>= f =
+    case f x of
+         Failure s      -> Failure s
+         Success ms' x' -> Success (ms `mappend` ms') x'
 
 class Monad m => PMonad m where
   addMessage :: Message -> m ()
@@ -56,17 +60,16 @@ instance PMonad Maybe where
   getFile    _ = Nothing
 
 data PMonad m => PState m =
-         PState { sInInclude  :: [FilePath]
-                , sMessages   :: Seq Message
-                , sLogLevel   :: LogLevel
-                , sEndline    :: Seq (P m ())
-                , sBlockSep   :: Seq (P m ())
-                , sReferences :: M.Map Key Source
-                }
+  PState { sIncludes   :: [FilePath]
+         , sLogLevel   :: LogLevel
+         , sEndline    :: Seq (P m ())
+         , sBlockSep   :: Seq (P m ())
+         , sReferences :: M.Map Key Source
+         }
 
+-- | Default PState values.
 pstate :: PMonad m => PState m
-pstate = PState { sInInclude  = []
-                , sMessages   = Seq.empty
+pstate = PState { sIncludes   = []
                 , sLogLevel   = WARNING
                 , sEndline    = Seq.empty
                 , sBlockSep   = Seq.empty
@@ -75,4 +78,23 @@ pstate = PState { sInInclude  = []
 
 type P m a = ParsecT Text (PState m) m a
 
+-- | Version of 'show' that works for any 'IsString' instance.
+show' :: (Show a, IsString b) => a -> b
+show' = fromString . show
+
+-- | Run a parser and handle messages.
+parseWith :: PMonad m => P m a -> Text -> m a
+parseWith p t = do
+  res <- runParserT p pstate "input" t
+  case res of
+       Right x -> return x
+       Left s  -> fail (show s)
+
+-- | Log a message if the log level is appropriate.
+logM :: PMonad m => LogLevel -> Text -> P m ()
+logM level msg = do
+  logLevel <- fmap sLogLevel getState
+  pos <- getPosition
+  when (level >= logLevel) $
+     lift $ addMessage $ Message level pos msg
 
