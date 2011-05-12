@@ -8,61 +8,19 @@ import Text.Pandoc.Builder
 import Data.Sequence as Seq
 import Data.Monoid
 import qualified Data.Map as M
-import Data.Traversable
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Char (toLower)
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Foldable as F
-import Text.Parsec hiding (sepBy, newline)
+import Text.Parsec hiding (sepBy)
 import Control.Monad
-import Control.Monad.Trans
 import qualified Data.Text.Encoding as E
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Data.Generics.Uniplate.Operations (transformBi)
 import Network.URI ( escapeURIString, isAllowedInURI )
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Entity (lookupEntity)
-
-pushEndline :: PMonad m => P m () -> P m ()
-pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
-
-popEndline :: PMonad m => P m ()
-popEndline = do
-  st <- getState
-  case viewr (sEndline st) of
-        EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
-        ps :> _ -> setState st{ sEndline = ps }
-
-withEndline :: PMonad m => P m a -> P m b -> P m b
-withEndline sep p = pushEndline (sep *> return ()) *> p <* popEndline
-
-pushBlockSep :: PMonad m => P m () -> P m ()
-pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
-
-popBlockSep :: PMonad m => P m ()
-popBlockSep = do
-  st <- getState
-  case viewr (sBlockSep st) of
-        EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
-        ps :> _ -> setState st{ sBlockSep = ps }
-
-withBlockSep :: PMonad m => P m a -> P m b -> P m b
-withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
-
-pBlockSep :: PMonad m => P m ()
-pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
-
-pNewlines :: PMonad m => P m Int
-pNewlines = Prelude.length <$> many1 pNewline
-
-pNewline :: PMonad m => P m Int
-pNewline = try $ spnl *> pBlockSep *> return 1
-
-pEndline :: PMonad m => P m Inlines
-pEndline = try $
-  newline *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
-  lookAhead nonnl *> return sp
 
 pVerbatim :: PMonad m => P m Inlines
 pVerbatim = try $ do
@@ -71,30 +29,6 @@ pVerbatim = try $ do
   verbatim . T.pack
      <$> many1Till (nonnl <|> (' ' <$ (pNewline *> notFollowedBy spnl)))
             (try $ sps *> string delim *> notFollowedBy (char '`'))
-
-nonnl :: PMonad m => P m Char
-nonnl = satisfy $ \c -> c /= '\n' && c /= '\r'
-
-sps :: PMonad m => P m ()
-sps = skipMany spaceChar
-
-newline :: PMonad m => P m Char
-newline = char '\n' <|> (char '\r' <* option '\n' (char '\n'))
-
-spnl :: PMonad m => P m ()
-spnl = try $ sps <* newline
-
-eol :: PMonad m => P m ()
-eol = sps *> lookAhead (() <$ newline <|> eof)
-
-spOptNl :: PMonad m => P m ()
-spOptNl = try $ sps <* optional (pNewline <* sps)
-
-spaceChar :: PMonad m => P m Char
-spaceChar = satisfy (\c -> c == ' ' || c == '\t')
-
-nonSpaceChar :: PMonad m => P m Char
-nonSpaceChar = satisfy  (\c -> c /= ' ' && c /= '\n' && c /= '\t')
 
 pInclude :: PMonad m => P m Blocks
 pInclude = do
@@ -119,8 +53,8 @@ pSymbol :: PMonad m => P m Inlines
 pSymbol = txt . T.singleton <$> nonnl
 
 pSp :: PMonad m => P m Inlines
-pSp = spaceChar *> (  skipMany1 spaceChar *> ((lineBreak <$ pEndline) <|> return sp)
-                  <|> return sp)
+pSp = spaceChar *> (  skipMany1 spaceChar *> ((lineBreak <$ pEndline) <|> return (inline Sp))
+                  <|> return (inline Sp))
 
 pAutolink :: PMonad m => P m Inlines
 pAutolink = mkLink <$> pUri <|> mkEmail <$> pEmail
@@ -172,7 +106,7 @@ pLink = try $ do
 pReferenceLink :: PMonad m => Label -> Source -> P m Inlines
 pReferenceLink lab x = try $ do
   (k, fall) <- option (key x, fallback x) $ try $ do
-                   s <- option mempty $ sp <$
+                   s <- option mempty $ inline Sp <$
                            ((pNewline *> sps) <|> skipMany1 spaceChar)
                    ils <- pBracketedInlines
                    let k' = if ils == mempty then key x else Key ils
@@ -236,17 +170,17 @@ pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
 pEmph :: PMonad m => P m Inlines
 pEmph = emph <$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
-    where starStart = char '*' *> notFollowedBy (spaceChar <|> newline)
+    where starStart = char '*' *> notFollowedBy (spaceChar <|> nl)
           starEnd   = notFollowedBy' pStrong *> char '*'
-          ulStart   = char '_' *> notFollowedBy (spaceChar <|> newline)
+          ulStart   = char '_' *> notFollowedBy (spaceChar <|> nl)
           ulEnd     = notFollowedBy' pStrong *> char '_'
 
 pStrong :: PMonad m => P m Inlines
 pStrong = strong <$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
-    where starStart = string "**" *> notFollowedBy (spaceChar <|> newline)
+    where starStart = string "**" *> notFollowedBy (spaceChar <|> nl)
           starEnd   = try (string "**")
-          ulStart   = string "__" *> notFollowedBy (spaceChar <|> newline)
+          ulStart   = string "__" *> notFollowedBy (spaceChar <|> nl)
           ulEnd     = try (string "__")
 
 trimInlines :: Inlines -> Inlines
@@ -300,7 +234,7 @@ pHeaderSetext :: PMonad m => P m Blocks
 pHeaderSetext = try $ do
   -- lookahead to speed up parsing
   lookAhead $ skipMany nonnl *> pNewline *> setextChar
-  ils <- toInlines <$> many1Till pInline newline
+  ils <- toInlines <$> many1Till pInline nl
   c <- setextChar
   skipMany (char c)
   eol
@@ -350,15 +284,15 @@ bullet :: PMonad m => P m Char
 bullet = try $ do
   nonindentSpace
   b <- satisfy $ \c -> c == '-' || c == '+' || c == '*'
-  spaceChar <|> lookAhead (newline <|> '\n' <$ eof)
+  spaceChar <|> lookAhead (nl <|> '\n' <$ eof)
   -- not an hrule
   notFollowedBy $ sps *> char b *> sps *> char b *> sps
-                  *> skipMany (char b *> sps) *> newline
+                  *> skipMany (char b *> sps) *> nl
   return b
 
 enum :: PMonad m => P m Char
 enum = try $ nonindentSpace *> ('#' <$ many1 digit <|> char '#') <* char '.' <*
-              (spaceChar <|> lookAhead (newline <|> '\n' <$ eof))
+              (spaceChar <|> lookAhead (nl <|> '\n' <$ eof))
 
 indentSpace :: PMonad m => P m ()
 indentSpace = try $  (count 4 (char ' ') >> return ())

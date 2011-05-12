@@ -1,9 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses,
-   FlexibleInstances #-}
+   FlexibleInstances, OverloadedStrings #-}
 module Text.Pandoc.Parsing
 where
 import Text.Pandoc.Definition
+import Text.Pandoc.Builder
 import Data.String
+import Data.Traversable (sequenceA)
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad
@@ -15,7 +17,6 @@ import Data.Text (Text)
 import Text.Parsec
 import Data.Sequence as Seq
 import Control.Applicative ((<$>), (<$), (<*), (*>))
-import qualified Data.Foldable as F
 
 instance Monad m => Stream Text m Char where
   uncons = return . T.uncons
@@ -128,4 +129,67 @@ parseIncludeFile f parser = do
   setInput old
   return res
 
+pushEndline :: PMonad m => P m () -> P m ()
+pushEndline p = modifyState $ \st -> st{ sEndline = sEndline st |> p }
+
+popEndline :: PMonad m => P m ()
+popEndline = do
+  st <- getState
+  case viewr (sEndline st) of
+        EmptyR  -> logM ERROR "Tried to pop empty pEndline stack"
+        ps :> _ -> setState st{ sEndline = ps }
+
+withEndline :: PMonad m => P m a -> P m b -> P m b
+withEndline sep p = pushEndline (sep *> return ()) *> p <* popEndline
+
+pushBlockSep :: PMonad m => P m () -> P m ()
+pushBlockSep p = modifyState $ \st -> st{ sBlockSep = sBlockSep st |> p }
+
+popBlockSep :: PMonad m => P m ()
+popBlockSep = do
+  st <- getState
+  case viewr (sBlockSep st) of
+        EmptyR  -> logM ERROR "Tried to pop empty pBlockSep stack"
+        ps :> _ -> setState st{ sBlockSep = ps }
+
+withBlockSep :: PMonad m => P m a -> P m b -> P m b
+withBlockSep sep p = pushBlockSep (sep *> return ()) *> p <* popBlockSep
+
+pBlockSep :: PMonad m => P m ()
+pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
+
+pNewlines :: PMonad m => P m Int
+pNewlines = Prelude.length <$> many1 pNewline
+
+pNewline :: PMonad m => P m Int
+pNewline = try $ spnl *> pBlockSep *> return 1
+
+pEndline :: PMonad m => P m Inlines
+pEndline = try $
+  nl *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
+  lookAhead nonnl *> return (inline Sp)
+
+nonnl :: PMonad m => P m Char
+nonnl = satisfy $ \c -> c /= '\n' && c /= '\r'
+
+sps :: PMonad m => P m ()
+sps = skipMany spaceChar
+
+nl :: PMonad m => P m Char
+nl = char '\n' <|> (char '\r' <* option '\n' (char '\n'))
+
+spnl :: PMonad m => P m ()
+spnl = try $ sps <* nl
+
+eol :: PMonad m => P m ()
+eol = sps *> lookAhead (() <$ nl <|> eof)
+
+spOptNl :: PMonad m => P m ()
+spOptNl = try $ sps <* optional (pNewline <* sps)
+
+spaceChar :: PMonad m => P m Char
+spaceChar = satisfy (\c -> c == ' ' || c == '\t')
+
+nonSpaceChar :: PMonad m => P m Char
+nonSpaceChar = satisfy  (\c -> c /= ' ' && c /= '\n' && c /= '\t')
 
