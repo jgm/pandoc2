@@ -69,7 +69,7 @@ pSymbol = txt . T.singleton <$> nonnl
 
 pSp :: PMonad m => P m Inlines
 pSp = spaceChar *>
-    (  skipMany1 spaceChar *> ((lineBreak <$ pEndline) <|> return mempty)
+    (  skipMany1 spaceChar *> ((lineBreak <$ pEndline) <|> return (inline Sp))
    <|> return (inline Sp)
     )
 
