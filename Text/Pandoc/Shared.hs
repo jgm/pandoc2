@@ -59,3 +59,15 @@ escapeURI = T.pack . escapeURIString isAllowedInURI .
 show' :: (Show a, IsString b) => a -> b
 show' = fromString . show
 
+-- | Convert tabs to spaces.
+convertTabs :: Int -> Text -> Text
+convertTabs tabstop = T.unlines . Prelude.map convertTabL . T.lines
+  where convertTabL l =
+          case T.break (=='\t') l of
+                (_,x) | T.null x -> l
+                (x,y) -> x <> ss <> convertTabL (T.tail y)
+                          where ss = T.replicate (tabstop - (n `mod` tabstop)) s
+                                s  = T.pack " "
+                                n  = T.length x
+
+
