@@ -16,9 +16,9 @@ test: markdowntests
 
 markdowntests:
 	cd Tests && \
-	perl MarkdownTest.pl --testdir=Tests_Markdown_1.0.3 -s ../dist/build/markdown/markdown --tidy
+	perl MarkdownTest.pl --testdir=Tests_Markdown_1.0.3 -s ../dist/build/pandoc2/pandoc2 --tidy
 
 phptests:
 	cd Tests && \
-	perl MarkdownTest.pl --testdir=Tests_PHP_Markdown -s ../dist/build/markdown/markdown --tidy
+	perl MarkdownTest.pl --testdir=Tests_PHP_Markdown -s ../dist/build/pandoc2/pandoc2 --tidy
 

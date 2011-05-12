@@ -41,5 +41,5 @@ Library
                    Text.Pandoc.Reader.Markdown,
                    Text.Pandoc.Writer.HTML
 
-Executable markdown
-  Main-Is:            markdown.hs
+Executable pandoc2
+  Main-Is:            pandoc2.hs
