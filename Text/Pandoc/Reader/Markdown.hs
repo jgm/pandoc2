@@ -108,7 +108,7 @@ pLink :: PMonad m => P m Inlines
 pLink = try $ do
   ils <- pBracketedInlines
   guard $ ils /= mempty
-  let lab = Label ils
+  let lab = Label $ delink ils
   let ref = Ref{ key = Key ils, fallback = "[" <> ils <> "]" }
   pExplicitLink lab <|> pReferenceLink lab ref
 

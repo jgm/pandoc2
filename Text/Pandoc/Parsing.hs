@@ -7,6 +7,7 @@ import Text.Pandoc.Builder
 import Data.String
 import Data.Traversable (sequenceA)
 import qualified Data.Map as M
+import qualified Data.Foldable as F
 import Data.Monoid
 import Control.Monad
 import Control.Monad.Trans
@@ -306,3 +307,9 @@ trimInlines (Inlines ils) = Inlines $ dropWhileL (== Sp) $
 toInlines :: [Inlines] -> Inlines
 toInlines = trimInlines . mconcat
 
+-- | Remove links from 'Inlines'.
+delink :: Inlines -> Inlines
+delink = Inlines . F.foldMap (unInlines . go) . unInlines
+  where go (Link _ (Ref { fallback = f })) = f
+        go (Link (Label lab) _)            = lab
+        go x                               = inline x
