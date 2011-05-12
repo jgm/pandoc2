@@ -51,8 +51,10 @@ pInline = choice [ pTxt, pSp, pEndline, pFours, pStrong, pEmph, pVerbatim,
 pInlines :: PMonad m => P m Inlines
 pInlines = toInlines <$> many1 pInline
 
-pInlinesBetween :: PMonad m => P m a -> P m b -> P m Inlines
-pInlinesBetween start end = mconcat <$> try (start *> many1Till pInline end)
+pInlinesBetween :: (Show b, PMonad m) => P m a -> P m b -> P m Inlines
+pInlinesBetween start end = mconcat <$> try (start *> many1Till inner end)
+  where inner =  (pSp >>= (\i -> (i <>) <$> (notFollowedBy' end *> pInline)))
+             <|> pInline
 
 pVerbatim :: PMonad m => P m Inlines
 pVerbatim = try $ do
