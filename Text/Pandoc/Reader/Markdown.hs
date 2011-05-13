@@ -53,8 +53,8 @@ pInlines = toInlines <$> many1 pInline
 
 pInlinesBetween :: (Show b, PMonad m) => P m a -> P m b -> P m Inlines
 pInlinesBetween start end = mconcat <$> try (start *> many1Till inner end)
-  where inner =  (pSp >>= (\i -> (i <>) <$> (notFollowedBy' end *> pInline)))
-             <|> pInline
+  where inner      =  innerSpace <|> (notFollowedBy' pSp *> pInline)
+        innerSpace = try $ pSp <* notFollowedBy' end
 
 pVerbatim :: PMonad m => P m Inlines
 pVerbatim = try $ do
