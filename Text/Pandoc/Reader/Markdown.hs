@@ -137,15 +137,14 @@ pLink = try $ do
   pExplicitLink lab <|> pReferenceLink lab ref
 
 pReferenceLink :: PMonad m => Label -> Source -> P m Inlines
-pReferenceLink lab x = try $ do
-  (k, fall) <- option (key x, fallback x) $ try $ do
-                   s <- option mempty $ inline Sp <$
-                           (() <$ pEndline <|> skipMany1 space)
-                   ils <- pBracketedInlines
-                   let k' = if ils == mempty then key x else Key ils
-                   let f' = fallback x <> s <> "[" <> ils <> "]"
-                   return (k',f')
-  return $ inline $ Link lab Ref{ key = k, fallback = fall }
+pReferenceLink lab ref = try $ do
+  ref' <- option ref $ try $ do
+              s <- option mempty $ (pEndline <|> pSp)
+              ils <- pBracketedInlines
+              let k' = if ils == mempty then key ref else Key ils
+              let f' = fallback ref <> s <> "[" <> ils <> "]"
+              return $ Ref{ key = k', fallback = f' }
+  return $ inline $ Link lab ref'
 
 pExplicitLink :: PMonad m => Label -> P m Inlines
 pExplicitLink lab = try $ do
