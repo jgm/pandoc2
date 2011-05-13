@@ -144,15 +144,6 @@ pSource = T.pack
                                <|> count 1 (char '('))
            )
 
-paren :: Monad m => P m Char
-paren = satisfy $ \c -> c == '(' || c == ')'
-
-inParens :: Monad m => P m String
-inParens = try $ do
-  char '('
-  xs <- manyTill anyChar (char ')')
-  return $ '(':xs ++ ")"
-
 pTitle :: PMonad m => P m Text
 pTitle = do
   c <- quoteChar
