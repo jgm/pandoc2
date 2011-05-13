@@ -261,10 +261,10 @@ pListItem start = try $ do
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ sps *> listStart) $ do
       Blocks bs <- mconcat
-                <$> (pBlock `sepBy` (pNewlines >> notFollowedBy spnl))
+                <$> (pBlock `sepBy` (pNewlines *> notFollowedBy spnl))
                    <|> return mempty
       if n > 1
-         then return (False, Blocks bs)
+         then return (False, Blocks bs)   -- not a tight list
          else case viewl bs of
                    EmptyL          -> return (True, Blocks bs)
                    (Para _ :< sq) ->
