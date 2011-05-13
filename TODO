@@ -1,0 +1,3 @@
+pResolveRefs takes about 41% of the execution time.
+That's the place to focus on speed improvements.
+
