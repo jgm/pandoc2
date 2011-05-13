@@ -20,15 +20,6 @@ import Data.Generics.Uniplate.Operations (transformBi)
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Entity (lookupEntity)
 
-
-
-isEscapable :: Char -> Bool
-isEscapable c = c == '\\' || c == '`' || c == '*' || c == '_' ||
-                c == '{'  || c == '}' || c == '[' || c == ']' ||
-                c == '('  || c == ')' || c == '>' || c == '#' ||
-                c == '+'  || c == '-' || c == '!' || c == '~'
-
-
 -- Document-level parsers
 
 pDoc :: PMonad m => P m Blocks
@@ -75,7 +66,18 @@ pVerbatim = try $ do
     <$> manyTill (nonNewline <|> (SPACE <$ pEndline)) end
 
 pEscaped :: PMonad m => P m Inlines
-pEscaped = try $ sym '\\' *> pSym
+pEscaped = try $ do
+  sym '\\'
+  SYM c <- satisfyTok isEscapable
+  return $ txt $ T.singleton c
+
+isEscapable :: Tok -> Bool
+isEscapable (SYM c) =
+  c == '\\' || c == '`' || c == '*' || c == '_' ||
+  c == '{'  || c == '}' || c == '[' || c == ']' ||
+  c == '('  || c == ')' || c == '>' || c == '#' ||
+  c == '+'  || c == '-' || c == '!' || c == '.'
+isEscapable _ = False
 
 pSym :: PMonad m => P m Inlines
 pSym = do
