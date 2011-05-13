@@ -85,10 +85,8 @@ pSym = do
   return $ txt $ T.singleton c
 
 pSp :: PMonad m => P m Inlines
-pSp = space *>
-    (  skipMany1 space *> option (inline Sp) (lineBreak <$ pEndline)
-   <|> return (inline Sp)
-    )
+pSp = space *> option (inline Sp)
+        (skipMany1 space *> option (inline Sp) (lineBreak <$ pEndline))
 
 pWord :: PMonad m => P m Inlines
 pWord = do
