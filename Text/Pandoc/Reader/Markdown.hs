@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, OverloadedStrings, MultiParamTypeClasses,  GeneralizedNewtypeDeriving,
-    FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Text.Pandoc.Reader.Markdown
 where
 import Text.Pandoc.Definition
