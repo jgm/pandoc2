@@ -32,8 +32,15 @@ Some differences from pandoc 1
 
 * `Text` is used throughout instead of `String`.
 
+* The input text is tokenized, and the tokens fed to the parser. This
+  makes the parsers simpler in some cases (especially in handling
+  line endings) and seems to boost performance. Tabs are converted in the
+  tokenization phase.
+
 * IO actions are now possible in the parsers.  This should make it
-  possible to handle things like LaTeX `\include`.
+  possible to handle things like LaTeX `\include`.  But it is also
+  possible for the user to run the parsers in a pure Monad.
+  (See the `PMonad` class.)
 
 * It is also now easy to issue warnings and informational messages
   during parsing, to alert the user if information is being lost,
@@ -62,19 +69,11 @@ Some differences from pandoc 1
 Observations
 ------------
 
-The code is cleaner (though more abstractions can be made) and shorter.
+The code is cleaner and shorter.
 
-Performance is, surprisingly, a bit slower than `pandoc --strict` (though
-much faster than `pandoc --strict --normalize`). I suspect there are more
-optimizations possible and would welcome suggestions. `resolveRefs` is slow,
-perhaps because of the generics, and might be improved by a custom Uniplate
-instance. Perhaps it would be worth writing new versions of the parsec
-combinators (`many`, `manyTill`, etc.) that can directly return `Sequence` and
-`Text`.
-
-I have included code to convert tabs to spaces, mainly for running
-the Markdown test suite, but this isn't necessary; the parser can handle plain
-tabs.
+Performance is significantly faster than pandoc, even with the `--strict`
+flag. `resolveRefs` is slow, perhaps because of the generics, and might be
+improved by a custom Uniplate instance.
 
 To run the Markdown test suite, do `make test`. To run the PHP Markdown test
 suite, do `make phptests`. Several of the PHP tests fail, but in many of these
