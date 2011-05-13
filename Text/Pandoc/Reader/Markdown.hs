@@ -159,7 +159,7 @@ pExplicitLink lab = try $ do
 pSource :: PMonad m => P m Text
 pSource = angleSource <|> regSource
   where angleSource = try $ sym '<' *> textTill nonNewline (sym '>')
-        regSource = T.concat <$> many chunk
+        regSource   = T.concat <$> many chunk
         chunk       = toksToText <$> (  many1 normalChar
                                     <|> inParens normalChar
                                     <|> count 1 (sym '(') )
@@ -216,9 +216,11 @@ pPara :: PMonad m => P m Blocks
 pPara = para <$> pInlines
 
 pQuote :: PMonad m => P m Blocks
-pQuote = quote <$> try (quoteStart
-   *> withBlockSep quoteStart (withEndline (optional quoteStart) pBlocks))
-    where quoteStart = try $ nonindentSpace *> sym '>' *> optional space
+pQuote = try $ do
+  let quoteStart = try $ nonindentSpace *> sym '>' *> optional space
+  quoteStart
+  xs <- withBlockSep quoteStart $ withEndline (optional quoteStart) pBlocks
+  return $ quote xs
 
 pHeader :: PMonad m => P m Blocks
 pHeader = pHeaderSetext <|> pHeaderATX
