@@ -63,7 +63,25 @@ pVerbatim = try $ do
   verbatim <$> textTill (nonnl <|> (' ' <$ pEndline)) end
 
 pEscaped :: PMonad m => P m Inlines
-pEscaped = txt . T.singleton <$> (try $ char '\\' *> oneOf "\\`*_{}[]()>#+-.!~")
+pEscaped = txt . T.singleton <$> escapedChar
+
+escapedChar :: Monad m => P m Char
+escapedChar = try $ char '\\' *> oneOf "\\`*_{}[]()>#+-.!~"
+
+-- like anyChar, but process markdown escapes
+anyChar' :: Monad m => P m Char
+anyChar' = escapedChar <|> anyChar
+
+paren :: Monad m => P m Char
+paren = satisfy $ \c -> c == '(' || c == ')'
+
+-- | Parse text between parentheses, including balanced parentheses.
+inParens :: Monad m => P m String
+inParens = try $ do
+  char '('
+  xs <- many (inParens <|> count 1 anyChar')
+  char ')'
+  return $ '(': concat xs ++ ")"
 
 pSymbol :: PMonad m => P m Inlines
 pSymbol = txt . T.singleton <$> nonnl
@@ -136,18 +154,19 @@ pExplicitLink lab = try $ do
   return $ inline $ Link lab Source{ location = escapeURI src, title = tit }
 
 pSource :: PMonad m => P m Text
-pSource = T.pack
-       <$> ( (char '<' *> manyTill nonnl (char '>'))
-          <|> mconcat <$> many (  many1 (notFollowedBy paren *> nonSpaceChar)
-                               <|> inParens
-                               <|> count 1 (char '('))
-           )
+pSource = T.pack <$> (angleSource <|> parenSource)
+  where angleSource = try $
+                   char '<' *> manyTill (notFollowedBy nl *> anyChar') (char '>')
+        parenSource = mconcat <$> try
+                   (char '(' *> many (normalChunk <|> inParens <|> count 1 (char ')')))
+        normalChunk = many1 $ notFollowedBy paren *> lookAhead nonSpaceChar
+                              *> escapedChar
 
 pTitle :: PMonad m => P m Text
 pTitle = do
   c <- quoteChar
   let end = try $ char c *> lookAhead (sps *> char ')')
-  textTill anyChar end
+  textTill anyChar' end
 
 pTxt :: PMonad m => P m Inlines
 pTxt = do
