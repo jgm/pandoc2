@@ -86,7 +86,7 @@ pSym = do
 
 pSp :: PMonad m => P m Inlines
 pSp = space *>
-    (  skipMany1 space *> ((lineBreak <$ pEndline) <|> return (inline Sp))
+    (  skipMany1 space *> option (inline Sp) (lineBreak <$ pEndline)
    <|> return (inline Sp)
     )
 
