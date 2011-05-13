@@ -267,15 +267,3 @@ anyLine = cleanup . T.pack <$> many nonnl
   where cleanup t = if T.all iswhite t then T.empty else t
         iswhite c = c == ' ' || c == '\t'
 
--- | Parse a parenthesis.
-paren :: Monad m => P m Char
-paren = satisfy $ \c -> c == '(' || c == ')'
-
--- | Parse text between parentheses, including balanced parentheses.
-inParens :: Monad m => P m String
-inParens = try $ do
-  char '('
-  let nonparen = satisfy $ \c -> c /= '(' && c /= ')'
-  xs <- many (many1 nonparen <|> inParens)
-  char ')'
-  return $ '(': concat xs ++ ")"
