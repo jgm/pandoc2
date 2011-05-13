@@ -14,9 +14,9 @@ main = do
   let poptions' = poptions { optLogLevel = case verbosity' of
                                                 Quiet  -> ERROR
                                                 Normal -> WARNING
-                                                Loud   -> INFO }
-  let convert x = parseWith poptions' pDoc
-                  (convertTabs (tab_stop opts) $ decodeUtf8 x)
+                                                Loud   -> INFO
+                           , optTabStop = tab_stop opts }
+  let convert x = parseWith poptions' pDoc (decodeUtf8 x)
                   >>= renderHtmlToByteStringIO B.putStr . docToHtml poptions
   case files opts of
        [] -> B.getContents >>= convert

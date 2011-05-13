@@ -30,11 +30,13 @@ instance Show Message where
 
 data POptions =
   POptions { optLogLevel  :: LogLevel
+           , optTabStop   :: Int
            }
 
 -- | Default parser options.
 poptions :: POptions
 poptions = POptions { optLogLevel  = WARNING
+                    , optTabStop   = 4
                     }
 
 -- | Trim leading and trailing Sp (spaces) from an Inlines.

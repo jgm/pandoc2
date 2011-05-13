@@ -1,11 +1,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses,
-   FlexibleInstances, OverloadedStrings #-}
+   FlexibleInstances, FlexibleContexts, OverloadedStrings #-}
 module Text.Pandoc.Parsing
 where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder
 import Text.Pandoc.Shared
 import Data.Traversable (sequenceA)
+import Data.Char (isLetter)
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad
@@ -14,12 +15,173 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.IO (hPutStrLn, stderr)
 import Data.Text (Text)
-import Text.Parsec
-import Data.Sequence as Seq
+import Text.Parsec hiding (space, newline)
+import Text.Parsec.Pos
+import qualified Data.Sequence as Seq
+import Data.Sequence (Seq, ViewR(..), viewr, (|>))
 import Control.Applicative ((<$>), (<$), (<*), (*>))
 
-instance Monad m => Stream Text m Char where
-  uncons = return . T.uncons
+data Tok = WORD Text    -- ^ string of alphanumerics
+         | SPACE        -- ^ a space
+         | NEWLINE      -- ^ lf, cr, crlf, or eof
+         | SYM Char     -- ^ a non-alphanumeric
+         deriving (Show, Eq)
+
+tokenize :: POptions -> Text -> [Tok]
+tokenize opts = tokenize' (optTabStop opts) 0
+
+tokenize' :: Int -> Int -> Text -> [Tok]
+tokenize' stop pos t =
+  case T.uncons t of
+       Nothing     -> [NEWLINE]
+       Just (c, _) | isLetter c ->
+         case T.span isLetter t of
+              (x,y) -> WORD x : tokenize'' (pos + T.length x) y
+       Just ('\t', t') ->
+              let n = stop - pos `mod` stop
+              in  replicate n SPACE ++ tokenize'' (pos + n) t'
+       Just (' ', t')  -> SPACE : tokenize'' (pos + 1) t'
+       Just ('\r',t')  ->
+              case T.uncons t' of
+                   Just ('\n',t'') -> NEWLINE : tokenize'' 0 t''
+                   _               -> NEWLINE : tokenize'' 0 t'
+       Just ('\n',t')  -> NEWLINE : tokenize'' 0 t'
+       Just (c, t')   -> SYM c : tokenize'' (pos + 1) t'
+    where tokenize''    = tokenize' stop
+
+toksToText :: [Tok] -> Text
+toksToText = T.concat . go
+  where go :: [Tok] -> [Text]
+        go (WORD x : ts) = x : go ts
+        go (SPACE  : ts) = T.singleton ' ' : go ts
+        go (NEWLINE: ts) = T.singleton ' ' : go ts
+        go (SYM '\\' : SYM c : ts) = T.singleton c : go ts
+        go (SYM c  : ts) = T.singleton c   : go ts
+        go []            = []
+
+toksToVerbatim :: [Tok] -> Text
+toksToVerbatim = T.concat . go
+  where go :: [Tok] -> [Text]
+        go (WORD x : ts) = x : go ts
+        go (SPACE  : ts) = T.singleton ' ' : go ts
+        go (NEWLINE: ts) = T.singleton '\n' : go ts
+        go (SYM c  : ts) = T.singleton c   : go ts
+        go []            = []
+
+showTok :: Tok -> String
+showTok (WORD t) = show t
+showTok SPACE    = "space"
+showTok NEWLINE  = "newline"
+showTok (SYM c)  = show c
+
+updatePosTok :: SourcePos -> Tok -> s -> SourcePos
+updatePosTok pos (WORD t) _ = incSourceColumn pos (T.length t)
+updatePosTok pos SPACE    _ = incSourceColumn pos 1
+updatePosTok pos NEWLINE  _ = updatePosChar pos '\n'
+updatePosTok pos (SYM _)  _ = incSourceColumn pos 1
+
+isSymTok :: Tok -> Bool
+isSymTok (SYM _) = True
+isSymTok _ = False
+
+isWordTok :: Tok -> Bool
+isWordTok (WORD _) = True
+isWordTok _ = False
+
+anyTok :: Stream s m Tok => ParsecT s u m Tok
+anyTok = tokenPrim showTok updatePosTok Just
+
+satisfyTok :: Stream s m Tok => (Tok -> Bool) -> ParsecT s u m Tok
+satisfyTok f = tokenPrim showTok updatePosTok $ \t -> if f t
+                                                         then Just t
+                                                         else Nothing
+
+sym :: Stream s m Tok => Char -> ParsecT s u m Tok
+sym c = satisfyTok (== SYM c)
+
+textTill :: Stream s m Tok
+         => ParsecT s u m Tok -> ParsecT s u m a -> ParsecT s u m Text
+textTill p end = toksToText <$> manyTill p end
+
+text1Till :: Stream s m Tok
+         => ParsecT s u m Tok -> ParsecT s u m a -> ParsecT s u m Text
+text1Till p end = try $ do
+  x <- p
+  xs <- manyTill p end
+  return $ toksToText (x:xs)
+
+verbTextTill :: Stream s m Tok
+         => ParsecT s u m Tok -> ParsecT s u m a -> ParsecT s u m Text
+verbTextTill p end = toksToVerbatim <$> manyTill p end
+
+space :: Stream s m Tok => ParsecT s u m Tok
+space = satisfyTok (== SPACE)
+
+newline :: Stream s m Tok => ParsecT s u m Tok
+newline = satisfyTok (== NEWLINE)
+
+nonSpace :: Stream s m Tok => ParsecT s u m Tok
+nonSpace = satisfyTok (\t -> t /= SPACE && t /= NEWLINE)
+
+nonNewline :: Stream s m Tok => ParsecT s u m Tok
+nonNewline = satisfyTok (\t -> t /= NEWLINE)
+
+sps :: Stream s m Tok => ParsecT s u m ()
+sps = skipMany space
+
+spnl :: Stream s m Tok => ParsecT s u m Tok
+spnl = sps *> newline
+
+eol :: Stream s m Tok => ParsecT s u m ()
+eol = () <$ (sps *> lookAhead newline)
+
+nonindentSpace :: (PMonad m, Stream [Tok] m Tok)
+               => ParsecT [Tok] (PState m) m Int
+nonindentSpace = try $ do
+  tabstop <- getOption optTabStop
+  s' <- many space
+  let l = length s'
+  if l < tabstop
+     then return l
+     else unexpected "indentation"
+
+indentSpace :: (PMonad m, Stream [Tok] m Tok) => ParsecT [Tok] (PState m) m ()
+indentSpace = try $ do
+  tabstop <- getOption optTabStop
+  count tabstop space *> return ()
+
+-- | 'sepBy' redefined to include a 'try', so the separator
+-- can fail.
+sepBy :: Stream s m t
+      => ParsecT s u m a -> ParsecT s u m b -> ParsecT s u m [a]
+sepBy p sep = do
+  x <- p
+  xs <- many $ try (sep *> p)
+  return (x:xs)
+
+upto :: Stream s m t => Int -> ParsecT s u m t -> ParsecT s u m [t]
+upto n _ | n <= 0 = return []
+upto n p = do
+  (p >>= (\x -> (x:) <$> upto (n-1) p)) <|> return []
+
+-- | A more general form of @notFollowedBy@.  This one allows any
+-- type of parser to be specified, and succeeds only if that parser
+-- fails. It does not consume any input.
+notFollowedBy' :: (Stream s m t, Show b)
+               => ParsecT s u m b -> ParsecT s u m ()
+notFollowedBy' p  = try $ join $  do  a <- try p
+                                      return (unexpected (show a))
+                                  <|>
+                                  return (return ())
+-- (This version due to Andrew Pimlott on the Haskell mailing list.)
+
+-- | Like 'manyTill', but parses at least one element.
+many1Till :: Stream s m t
+          => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
+many1Till p q = do
+  x <- p
+  xs <- manyTill p q
+  return (x:xs)
 
 data Result a = Success [Message] a
               | Failure String
@@ -68,7 +230,7 @@ pstate = PState { sOptions    = poptions
                 , sReferences = M.empty
                 }
 
-type P m a = ParsecT Text (PState m) m a
+type P m a = ParsecT [Tok] (PState m) m a
 
 -- | Retrieve parser option.
 getOption :: PMonad m => (POptions -> a) -> P m a
@@ -77,7 +239,7 @@ getOption opt = opt <$> sOptions <$> getState
 -- | Run a parser and handle messages.
 parseWith :: PMonad m => POptions -> P m a -> Text -> m a
 parseWith opts p t = do
-  res <- runParserT p pstate{ sOptions = opts } "input" t
+  res <- runParserT p pstate{ sOptions = opts } "input" $ tokenize opts t
   case res of
        Right x -> return x
        Left s  -> fail (show s)
@@ -100,7 +262,8 @@ parseIncludeFile f parser = do
   modifyState $ \st -> st{ sIncludes = f : inIncludes }
   old <- getInput
   -- set input and parse
-  lift (getFile f) >>= setInput
+  opts <- sOptions <$> getState
+  lift (getFile f) >>= setInput . tokenize opts
   res <- parser
   -- put everything back as it was and return results of parsing
   modifyState $ \st -> st{ sIncludes = inIncludes }
@@ -148,7 +311,7 @@ pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 -- | Parse multiple block-separating line breaks. Return number of
 -- newlines parsed.
 pNewlines :: PMonad m => P m Int
-pNewlines = Prelude.length <$> many1 pNewline
+pNewlines = length <$> many1 pNewline
 
 -- | Parse a block-separating line break.
 pNewline :: PMonad m => P m ()
@@ -159,29 +322,8 @@ pNewline = try $ spnl *> pBlockSep
 -- context. Return a Space.
 pEndline :: PMonad m => P m Inlines
 pEndline = try $
-  nl *> (getState >>= sequenceA . sEndline) *> skipMany spaceChar *>
-  lookAhead nonnl *> return (inline Sp)
-
--- | Parse a non-newline character.
-nonnl :: Monad m => P m Char
-nonnl = satisfy $ \c -> c /= '\n' && c /= '\r'
-
--- | Skip 0 or more spaces or tabs.
-sps :: Monad m => P m ()
-sps = skipMany spaceChar
-
--- | Parse a newline (CR, CRLF, LF).
-nl :: Monad m => P m Char
-nl = char '\n' <|> (char '\r' <* option '\n' (char '\n'))
-
--- | Skip any spaces, then parse a newline.
-spnl :: Monad m => P m ()
-spnl = try $ sps <* nl
-
--- | Succeeds if we're at the end of a line (skipping
--- line-ending spaces if present). Does not parse the newline.
-eol :: Monad m => P m ()
-eol = sps *> lookAhead (() <$ nl <|> eof)
+  newline *> (getState >>= sequenceA . sEndline) *> sps *>
+  lookAhead nonNewline *> return (inline Sp)
 
 -- | Parses line-ending spaces, if present, and optionally
 -- an endline followed by any spaces at the beginning of
@@ -189,81 +331,15 @@ eol = sps *> lookAhead (() <$ nl <|> eof)
 spOptNl :: PMonad m => P m ()
 spOptNl = try $ sps <* optional (pEndline <* sps)
 
--- | Parses a space or tab.
-spaceChar :: Monad m => P m Char
-spaceChar = satisfy $ \c -> c == ' ' || c == '\t'
-
--- | Parses anything other than a space, tab, CR, or LF.
-nonSpaceChar :: Monad m => P m Char
-nonSpaceChar = satisfy  $ \c ->
-  c /= ' ' && c /= '\n' && c /= '\r' && c /= '\t'
-
--- | Parses a quote character.
-quoteChar :: Monad m => P m Char
-quoteChar = satisfy $ \c -> c == '\'' || c == '"'
-
--- | Parses a string of text between quote characters.
--- Returns the string and the quotes.
-pQuoted :: PMonad m => P m String
-pQuoted = try $ quoteChar >>= \c ->
-  manyTill (nonnl <|> ' ' <$ pEndline) (char c) >>= \r ->
-    return (c : r ++ [c])
-
--- | 'sepBy' redefined to include a 'try', so the separator
--- can fail.
-sepBy :: PMonad m => P m a -> P m b -> P m [a]
-sepBy p sep = do
-  x <- p
-  xs <- many $ try (sep *> p)
-  return (x:xs)
-
--- | A more general form of @notFollowedBy@.  This one allows any
--- type of parser to be specified, and succeeds only if that parser
--- fails. It does not consume any input.
-notFollowedBy' :: (Stream s m t, Show b)
-               => ParsecT s u m b -> ParsecT s u m ()
-notFollowedBy' p  = try $ join $  do  a <- try p
-                                      return (unexpected (show a))
-                                  <|>
-                                  return (return ())
--- (This version due to Andrew Pimlott on the Haskell mailing list.)
-
--- | Like 'manyTill', but parses at least one element.
-many1Till :: Stream s m t
-          => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
-many1Till p q = do
-  x <- p
-  xs <- manyTill p q
-  return (x:xs)
-
--- | 'manyTill' specialized to 'Text'.
-textTill :: Stream s m t
-         => ParsecT s u m Char
-         -> ParsecT s u m end
-         -> ParsecT s u m Text
-textTill p end = T.pack <$> manyTill p end
-
--- | 'many1Till' specialized to 'Text'.
-text1Till :: Stream s m t
-          => ParsecT s u m Char
-          -> ParsecT s u m end
-          -> ParsecT s u m Text
-text1Till p end = T.pack <$> many1Till p end
-
--- | Parse a space/tab combination that takes you to the next tab stop.
-indentSpace :: PMonad m => P m ()
-indentSpace = try $  (count 4 (char ' ') >> return ())
-                 <|> (char '\t' >> return ())
-
--- | Parse 0 or more spaces not sufficient to take you to the next tab
--- stop.
-nonindentSpace :: PMonad m => P m ()
-nonindentSpace = option () $ onesp *> option () onesp *> option () onesp
-  where onesp = () <$ char ' '
-
--- | Parse a line of text, not including the newline.
-anyLine :: PMonad m => P m Text
-anyLine = cleanup . T.pack <$> many nonnl
+-- | Parse a verbatim line of text, not including the newline.
+verbLine :: PMonad m => P m Text
+verbLine = cleanup . toksToVerbatim <$> many nonNewline
   where cleanup t = if T.all iswhite t then T.empty else t
         iswhite c = c == ' ' || c == '\t'
+
+-- | Fail unless in column 1.
+pInColumn1 :: Monad m => P m ()
+pInColumn1 = do
+  pos <- getPosition
+  guard $ sourceColumn pos == 1
 
