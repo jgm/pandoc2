@@ -22,10 +22,10 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 -- Document-level parsers
 
 pDoc :: PMonad m => P m Blocks
-pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
+pDoc = skipMany pNewline *> pBlocks <* skipMany pNewline <* eof >>= pResolveRefs
 
-resolveRefs :: PMonad m => Blocks -> P m Blocks
-resolveRefs bs = do
+pResolveRefs :: PMonad m => Blocks -> P m Blocks
+pResolveRefs bs = do
   refs <- sReferences <$> getState
   return $ transformBi (handleRef refs) bs
 
