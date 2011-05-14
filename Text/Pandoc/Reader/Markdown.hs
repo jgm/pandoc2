@@ -65,12 +65,8 @@ isEscapable _ = False
 
 pSym :: PMonad m => P m Inlines
 pSym = do
-  smart <- getOption optSmart
   SYM c <- satisfyTok isSymTok
-  return $ txt $ T.singleton $
-    if c == '\'' && smart
-       then '\8217'
-       else c
+  return $ txt $ T.singleton $ c
 
 pSp :: PMonad m => P m Inlines
 pSp = space *> option (inline Sp)
@@ -178,8 +174,10 @@ pQuoted = try $ do
   getOption optSmart >>= guard
   SYM c <- satisfyTok isSymTok <|> SYM <$> pEntityChar
   case c of
-       '\'' -> pQuotedWith SingleQuoted pInline
-       '"'  -> pQuotedWith DoubleQuoted pInline
+       '\'' -> option (txt $ T.singleton '\8217') $
+                 pQuotedWith SingleQuoted pInline
+       '"'  -> option (txt "\"") $
+                 pQuotedWith DoubleQuoted pInline
        _    -> mzero
 
 pFours :: PMonad m => P m Inlines
