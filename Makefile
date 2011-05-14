@@ -12,13 +12,17 @@ prof:
 clean:
 	cabal clean
 
-test: markdowntests
+test: markdowntests pandoctests
 
 markdowntests:
 	cd Tests && \
-	perl MarkdownTest.pl --testdir=Markdown_1.0.3 -s ./markdown --tidy
+	OPTS="--strict --smart=no" perl MarkdownTest.pl --testdir=Markdown_1.0.3 -s ./markdown --tidy
 
 phptests:
 	cd Tests && \
-	perl MarkdownTest.pl --testdir=PHP_Markdown -s ./markdown  --tidy
+	OPTS="--strict --smart=no" perl MarkdownTest.pl --testdir=PHP_Markdown -s ./markdown  --tidy
+
+pandoctests:
+	cd Tests && \
+	OPTS="--smart=yes" perl MarkdownTest.pl --testdir=Pandoc -s ./markdown  --tidy
 
