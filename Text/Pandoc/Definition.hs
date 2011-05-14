@@ -29,9 +29,13 @@ data Inline = Txt Text
             | Image Label Source
             | Link Label Source
             | Verbatim Attr Text
+            | Quoted QuoteType Inlines
             | LineBreak
             | RawInline Format Text
             deriving (Show, Read, Data, Ord, Eq, Typeable)
+
+data QuoteType = SingleQuoted | DoubleQuoted
+               deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 newtype Label = Label Inlines
               deriving (Show, Read, Data, Ord, Eq, Typeable)

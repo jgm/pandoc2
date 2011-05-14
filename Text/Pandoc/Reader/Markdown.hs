@@ -18,7 +18,6 @@ import Text.Parsec hiding (sepBy, space, newline)
 import Control.Monad
 import Control.Applicative ((<$>), (<$), (*>), (<*))
 import Text.HTML.TagSoup
-import Text.HTML.TagSoup.Entity (lookupEntity)
 
 -- Document-level parsers
 
@@ -28,8 +27,9 @@ pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
 -- Inline parsers
 
 pInline :: PMonad m => P m Inlines
-pInline = choice [ pWord, pSp, pEndline, pFours, pStrong, pEmph, pVerbatim,
-            pImage, pLink, pAutolink, pEscaped, pEntity, pHtmlInline, pSym ]
+pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
+            pStrong, pEmph, pVerbatim, pImage, pLink, pAutolink,
+            pEscaped, pEntity, pHtmlInline, pSym ]
 
 pInlines :: PMonad m => P m Inlines
 pInlines = toInlines <$> many1 pInline
@@ -78,7 +78,6 @@ pSp = space *> option (inline Sp)
 
 pWord :: PMonad m => P m Inlines
 pWord = do
-  let wordTok = satisfyTok isWordTok
   x <- wordTok
   smart <- getOption optSmart
   let apos  = if smart
@@ -174,6 +173,15 @@ pTitle = do
   let end = try $ satisfyTok (== c) *> lookAhead (sps *> sym ')')
   textTill anyTok end
 
+pQuoted :: PMonad m => P m Inlines
+pQuoted = try $ do
+  getOption optSmart >>= guard
+  SYM c <- satisfyTok isSymTok <|> SYM <$> pEntityChar
+  case c of
+       '\'' -> pQuotedWith SingleQuoted pInline
+       '"'  -> pQuotedWith DoubleQuoted pInline
+       _    -> mzero
+
 pFours :: PMonad m => P m Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   x <- sym '*' <|> sym '_'
@@ -211,9 +219,9 @@ pPara = para <$> pInlines
 
 pQuote :: PMonad m => P m Blocks
 pQuote = try $ do
-  let quoteStart = try $ nonindentSpace *> sym '>' *> optional space
-  quoteStart
-  xs <- withBlockSep quoteStart $ withEndline (optional quoteStart) pBlocks
+  let start = try $ nonindentSpace *> sym '>' *> optional space
+  start
+  xs <- withBlockSep start $ withEndline (optional start) pBlocks
   return $ quote xs
 
 pHeader :: PMonad m => P m Blocks
@@ -361,7 +369,7 @@ pHtmlTag :: PMonad m => P m ([Tag String], Text)
 pHtmlTag = try $ do
   sym '<'
   let anyNonNl = toksToVerbatim <$> count 1 nonNewline
-  xs <- T.concat <$> manyTill (pQuoted <|> anyNonNl <|> "\n" <$ pNewline)
+  xs <- T.concat <$> manyTill (pQuotedText <|> anyNonNl <|> "\n" <$ pNewline)
                       (sym '>')
   let t = "<" <> xs <> ">"
   case parseTags (T.unpack t) of
@@ -373,8 +381,8 @@ quoteChar = satisfyTok $ \c -> c == SYM '\'' || c == SYM '"'
 
 -- | Parses a verbatim text between quote characters.
 -- Returns the string and the quotes.
-pQuoted :: PMonad m => P m Text
-pQuoted = try $ do
+pQuotedText :: PMonad m => P m Text
+pQuotedText = try $ do
   c@(SYM q) <- quoteChar
   x <- verbTextTill (nonNewline <|> SPACE <$ pEndline) (satisfyTok (== c))
   return $ T.singleton q <> x <> T.singleton q
@@ -414,10 +422,5 @@ blockTags = [ "address", "blockquote", "center", "del", "dir", "div",
               "thead", "tr", "script" ]
 
 pEntity :: PMonad m => P m Inlines
-pEntity = try $ do
-  sym '&'
-  x <- textTill nonSpace (sym ';')
-  case lookupEntity (T.unpack x) of
-       Just c   -> return $ txt $ T.singleton c
-       _        -> mzero
+pEntity = txt . T.singleton <$> pEntityChar
 

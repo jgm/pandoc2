@@ -85,4 +85,9 @@ inlineToHtml LineBreak = return $ H.br
 inlineToHtml (RawInline (Format "html") t) = return $ preEscapedText t
 inlineToHtml (RawInline _ _) = return $ mempty
 inlineToHtml (Verbatim _attr t) = return $ H.code $ toHtml t
-
+inlineToHtml (Quoted SingleQuoted ils) = do
+  xs <- inlinesToHtml ils
+  return $ "\8216" <> xs <> "\8217"
+inlineToHtml (Quoted DoubleQuoted ils) = do
+  xs <- inlinesToHtml ils
+  return $ "\8220" <> xs <> "\8221"

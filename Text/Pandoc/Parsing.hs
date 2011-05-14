@@ -16,6 +16,7 @@ import qualified Data.Text.IO as T
 import System.IO (hPutStrLn, stderr)
 import Data.Text (Text)
 import Text.Parsec hiding (space, newline)
+import Text.HTML.TagSoup.Entity (lookupEntity)
 import Text.Parsec.Pos
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq, ViewR(..), viewr, (|>))
@@ -87,6 +88,9 @@ isSymTok _ = False
 isWordTok :: Tok -> Bool
 isWordTok (WORD _) = True
 isWordTok _ = False
+
+wordTok :: Stream s m Tok => ParsecT s u m Tok
+wordTok = satisfyTok isWordTok
 
 anyTok :: Stream s m Tok => ParsecT s u m Tok
 anyTok = tokenPrim showTok updatePosTok Just
@@ -214,20 +218,22 @@ instance PMonad Maybe where
   getFile    _ = Nothing
 
 data PMonad m => PState m =
-  PState { sOptions    :: POptions
-         , sIncludes   :: [FilePath]
-         , sEndline    :: Seq (P m ())
-         , sBlockSep   :: Seq (P m ())
-         , sReferences :: M.Map Key Source
+  PState { sOptions      :: POptions
+         , sIncludes     :: [FilePath]
+         , sEndline      :: Seq (P m ())
+         , sBlockSep     :: Seq (P m ())
+         , sReferences   :: M.Map Key Source
+         , sQuoteContext :: Maybe QuoteType
          }
 
 -- | Default parser state.
 pstate :: PMonad m => PState m
-pstate = PState { sOptions    = poptions
-                , sIncludes   = []
-                , sEndline    = Seq.empty
-                , sBlockSep   = Seq.empty
-                , sReferences = M.empty
+pstate = PState { sOptions      = poptions
+                , sIncludes     = []
+                , sEndline      = Seq.empty
+                , sBlockSep     = Seq.empty
+                , sReferences   = M.empty
+                , sQuoteContext = Nothing
                 }
 
 type P m a = ParsecT [Tok] (PState m) m a
@@ -343,3 +349,53 @@ pInColumn1 = do
   pos <- getPosition
   guard $ sourceColumn pos == 1
 
+pEntityChar :: PMonad m => P m Char
+pEntityChar = try $ do
+  sym '&'
+  x <- textTill nonSpace (sym ';')
+  case lookupEntity (T.unpack x) of
+       Just c   -> return c
+       _        -> mzero
+-- quote parsers
+
+pQuotedWith :: PMonad m => QuoteType -> P m Inlines -> P m Inlines
+pQuotedWith qt ins = inline . Quoted qt <$>
+    (withQuoteContext qt $ toInlines <$> many1Till ins (quoteEnd qt))
+
+withQuoteContext :: PMonad m => QuoteType -> P m Inlines -> P m Inlines
+withQuoteContext qt ins = try $ do
+  oldContext <- sQuoteContext <$> getState
+  modifyState $ \st -> st{ sQuoteContext = Just qt }
+  result <- ins
+  modifyState $ \st -> st{ sQuoteContext = oldContext }
+  return result
+
+failIfInQuoteContext :: PMonad m => QuoteType -> P m ()
+failIfInQuoteContext qt =
+  sQuoteContext <$> getState >>= guard . (/= Just qt)
+
+charOrRef :: PMonad m => (Char -> Bool) -> P m Char
+charOrRef f = try $ do
+  SYM c <- satisfyTok isSymTok <|> SYM <$> pEntityChar
+  guard $ f c
+  return c
+
+quoteStart :: PMonad m => QuoteType -> P m ()
+quoteStart SingleQuoted = do
+  failIfInQuoteContext SingleQuoted
+  try $ do charOrRef (\c -> c == '\'' || c == '\8216')
+           notFollowedBy $ satisfyTok (==SPACE) <|> satisfyTok (==NEWLINE)
+           notFollowedBy $ charOrRef (\c -> c == ')' || c == '!' || c == ']' ||
+                             c == ',' || c == '.' || c == ';' || c == ':' ||
+                             c == '-' || c == '?')
+           return ()
+quoteStart DoubleQuoted = do
+  failIfInQuoteContext DoubleQuoted
+  try $ do charOrRef (\c -> c == '"' || c == '\8220')
+           notFollowedBy $ satisfyTok (==SPACE) <|> satisfyTok (==NEWLINE)
+
+quoteEnd :: PMonad m => QuoteType -> P m ()
+quoteEnd SingleQuoted =
+  charOrRef (\c -> c == '\'' || c == '\8217') *> notFollowedBy wordTok
+quoteEnd DoubleQuoted = 
+  charOrRef (\c -> c == '"' || c == '\8221') *> return ()

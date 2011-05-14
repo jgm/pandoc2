@@ -37,6 +37,12 @@ verbatim = verbatimAttr nullAttr
 verbatimAttr :: Attr -> Text -> Inlines
 verbatimAttr attr = inline . Verbatim attr
 
+singleQuoted :: Inlines -> Inlines
+singleQuoted = inline . Quoted SingleQuoted
+
+doubleQuoted :: Inlines -> Inlines
+doubleQuoted = inline . Quoted DoubleQuoted
+
 lineBreak :: Inlines
 lineBreak = inline LineBreak
 
