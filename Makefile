@@ -1,24 +1,24 @@
-OPTS=-O2 -Wall -fno-warn-unused-do-bind
-PROFOPTS=-prof -auto-all -caf-all -fforce-recomp -rtsopts
+.PHONY: all opt test clean prof all markdowntests phptests
 
-markdown:
-	cabal install
+all:
+	cabal install -ffastcompile
 
-markdown-prof: ${SOURCES}
+opt:
+	cabal install -f-fastcompile
+
+prof:
 	cabal install --enable-library-profiling --enable-executable-profiling
-
-.PHONY: test clean
 
 clean:
 	cabal clean
 
 test: markdowntests
 
-markdowntests:
+markdowntests: all
 	cd Tests && \
 	perl MarkdownTest.pl --testdir=Tests_Markdown_1.0.3 -s ./markdown --tidy
 
-phptests:
+phptests: all
 	cd Tests && \
 	perl MarkdownTest.pl --testdir=Tests_PHP_Markdown -s ./markdown  --tidy
 
