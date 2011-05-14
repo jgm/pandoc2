@@ -223,6 +223,7 @@ data PMonad m => PState m =
          , sEndline      :: Seq (P m ())
          , sBlockSep     :: Seq (P m ())
          , sReferences   :: M.Map Key Source
+         , sNotes        :: M.Map Key Blocks
          , sQuoteContext :: Maybe QuoteType
          }
 
@@ -233,6 +234,7 @@ pstate = PState { sOptions      = poptions
                 , sEndline      = Seq.empty
                 , sBlockSep     = Seq.empty
                 , sReferences   = M.empty
+                , sNotes        = M.empty
                 , sQuoteContext = Nothing
                 }
 
