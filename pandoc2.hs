@@ -16,7 +16,8 @@ main = do
                                                 Normal -> WARNING
                                                 Loud   -> INFO
                            , optTabStop = tab_stop opts
-                           , optStrict = strict opts }
+                           , optStrict = strict opts
+                           }
   let convert x = parseWith poptions' pDoc (decodeUtf8 x)
                   >>= renderHtmlToByteStringIO B.putStr . docToHtml poptions
   case files opts of
