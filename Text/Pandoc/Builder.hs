@@ -61,6 +61,9 @@ block = Blocks . singleton
 para :: Inlines -> Blocks
 para = block . Para
 
+plain :: Inlines -> Blocks
+plain = block . Plain
+
 quote :: Blocks -> Blocks
 quote = block . Quote
 

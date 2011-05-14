@@ -29,7 +29,7 @@ pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
 pInline :: PMonad m => P m Inlines
 pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
             pStrong, pEmph, pVerbatim, pImage, pLink, pAutolink,
-            pEscaped, pEntity, pHtmlInline, pSym ]
+            pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
 
 pInlines :: PMonad m => P m Inlines
 pInlines = toInlines <$> many1 pInline
@@ -222,6 +222,10 @@ pStrong = strong <$>
           starEnd   = try (count 2 (sym '*'))
           ulStart   = count 2 (sym '_') *> lookAhead nonSpace
           ulEnd     = try (count 2 (sym '_'))
+
+pInlineNote :: PMonad m => P m Inlines
+pInlineNote = note . plain
+  <$> (unlessStrict *> try (sym '^' *> pBracketedInlines))
 
 -- Block parsers
 
@@ -442,3 +446,5 @@ blockTags = [ "address", "blockquote", "center", "del", "dir", "div",
 pEntity :: PMonad m => P m Inlines
 pEntity = ch <$> pEntityChar
 
+unlessStrict :: PMonad m => P m ()
+unlessStrict = getOption optStrict >>= guard . not

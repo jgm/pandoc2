@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving,
+    TypeSynonymInstances #-}
 module Text.Pandoc.Writer.HTML (docToHtml) where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder (textify)
@@ -13,31 +14,28 @@ import qualified Data.Text.Lazy as L
 import Data.Generics.Uniplate.Operations (transformBi)
 import Control.Monad.State
 import Control.Applicative
-import Control.Monad
 
-data WriterState = WriterState { wOptions :: POptions }
+data WriterState = WriterState { wOptions :: POptions
+                               , wNotes   :: [Blocks] }
 
-newtype Monoid a => W a = W { unW :: State WriterState a }
-            deriving (Monad)
+type W = State WriterState Html
 
-instance Monoid a => Monoid (W a) where
+instance Monoid W where
   mempty = return mempty
   mappend = liftM2 mappend
 
-instance Functor W where
-  fmap = liftM
-
-nl :: W Html
+nl :: W
 nl = return $ preEscapedText "\n"
 
 docToHtml :: POptions -> Blocks -> Html
-docToHtml opts bs = evalState (unW $ blocksToHtml bs)
-                    WriterState{ wOptions = opts }
+docToHtml opts bs = evalState (blocksToHtml bs)
+                    WriterState{ wOptions = opts
+                               , wNotes   = [] }
 
-blocksToHtml :: Blocks -> W Html
+blocksToHtml :: Blocks -> W
 blocksToHtml = F.foldMap (\b -> blockToHtml b <> nl) . unBlocks
 
-blockToHtml :: Block -> W Html
+blockToHtml :: Block -> W
 blockToHtml (Para ils) = H.p <$> inlinesToHtml ils
 blockToHtml (Plain ils) = inlinesToHtml ils
 blockToHtml (Quote bs) = H.blockquote <$> nl <> blocksToHtml bs
@@ -64,10 +62,10 @@ blockToHtml (Header lev ils) = h <$> inlinesToHtml ils
              _  -> H.p
 blockToHtml HRule = return H.hr
 
-inlinesToHtml :: Inlines -> W Html
+inlinesToHtml :: Inlines -> W
 inlinesToHtml = F.foldMap inlineToHtml . unInlines
 
-inlineToHtml :: Inline -> W Html
+inlineToHtml :: Inline -> W
 inlineToHtml (Txt x) = return $ toHtml x
 inlineToHtml Sp      = return $ toHtml (" " :: L.Text)
 inlineToHtml (Emph ils) = H.em <$> inlinesToHtml ils
@@ -93,3 +91,9 @@ inlineToHtml (Quoted SingleQuoted ils) = do
 inlineToHtml (Quoted DoubleQuoted ils) = do
   xs <- inlinesToHtml ils
   return $ "\8220" <> xs <> "\8221"
+inlineToHtml (Note bs) = do
+  notes <- wNotes <$> get
+  let nextnum = length notes + 1
+  modify $ \st -> st{ wNotes = bs : notes }
+  let marker = H.sup (toHtml $ show nextnum)
+  return marker
