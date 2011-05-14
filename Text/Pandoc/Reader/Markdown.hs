@@ -51,7 +51,8 @@ pVerbatim = try $ do
 pEscaped :: PMonad m => P m Inlines
 pEscaped = try $ do
   sym '\\'
-  SYM c <- satisfyTok isEscapable
+  strict <- getOption optStrict
+  SYM c <- satisfyTok (if strict then isEscapable else isSymTok)
   return $ txt $ T.singleton c
 
 isEscapable :: Tok -> Bool
