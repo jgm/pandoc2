@@ -24,45 +24,43 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 pDoc :: PMonad m => P m Blocks
 pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof >>= pResolveRefs
 
+-- Reference resolution
+
 pResolveRefs :: PMonad m => Blocks -> P m Blocks
 pResolveRefs bs = do
   refs <- sReferences <$> getState
   return $ handleRefs refs bs
 
 handleRefs :: M.Map Key Source -> Blocks -> Blocks
-handleRefs refs = onBlocks (handleRefB refs)
+handleRefs refs = F.foldMap (handleRefB refs) . unBlocks
 
 handleRefB :: M.Map Key Source -> Block -> Blocks
-handleRefB refs (Para ils) = para $ onInlines (handleRefI refs) ils
-handleRefB refs (Plain ils) = block $ Plain $ onInlines (handleRefI refs) ils
-handleRefB refs (Quote bs) = quote $ onBlocks (handleRefB refs) bs
-handleRefB refs (List attr its) = block $ List attr $
-  map (\bs -> onBlocks (handleRefB refs) bs) its
-handleRefB refs (Header lev ils) = header lev $ onInlines (handleRefI refs) ils
-handleRefB _ x = block x
+handleRefB refs x =
+  let goI = F.foldMap (handleRefI refs) . unInlines
+      goB = F.foldMap (handleRefB refs) . unBlocks
+  in case x of
+      (Para ils)       -> para $ goI ils
+      (Plain ils)      -> block $ Plain $ goI ils
+      (Quote bs)       -> quote $ goB bs
+      (List attr its)  -> block $ List attr $ map goB its
+      (Header lev ils) -> header lev $ goI ils
+      _                -> block x
 
 handleRefI :: M.Map Key Source -> Inline -> Inlines
-handleRefI refs (Emph ils) =
-  inline $ Emph $ onInlines (handleRefI refs) ils
-handleRefI refs (Strong ils) =
-  inline $ Strong $ onInlines (handleRefI refs) ils
-handleRefI refs (Link (Label lab) Ref{ key = k, fallback = ils }) =
-      case M.lookup k refs of
-           Just s  -> inline $ Link (Label $ onInlines (handleRefI refs) lab) s
-           Nothing -> onInlines (handleRefI refs) ils
-handleRefI refs (Image (Label lab) Ref{ key = k, fallback = ils }) =
-      case M.lookup k refs of
-             Just s  -> inline $
-                        Image (Label $ onInlines (handleRefI refs) lab) s
-             Nothing -> onInlines (handleRefI refs) ils
-handleRefI _ x = inline x
-
-onInlines :: (Inline -> Inlines) -> Inlines -> Inlines
-onInlines f = F.foldMap f . unInlines
-
-onBlocks :: (Block -> Blocks) -> Blocks -> Blocks
-onBlocks f = F.foldMap f . unBlocks
-
+handleRefI refs x =
+  let goI = F.foldMap (handleRefI refs) . unInlines
+  in case x of
+      (Emph ils)       -> inline $ Emph $ goI ils
+      (Strong ils)     -> inline $ Strong $ goI ils
+      (Link (Label lab) Ref{ key = k, fallback = ils }) ->
+        case M.lookup k refs of
+             Just s  -> inline $ Link (Label $ goI lab) s
+             Nothing -> goI ils
+      (Image (Label lab) Ref{ key = k, fallback = ils }) ->
+        case M.lookup k refs of
+             Just s  -> inline $ Image (Label $ goI lab) s
+             Nothing -> goI ils
+      _                -> inline x
 
 -- Inline parsers
 
