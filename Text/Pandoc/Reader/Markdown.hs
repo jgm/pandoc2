@@ -65,8 +65,12 @@ isEscapable _ = False
 
 pSym :: PMonad m => P m Inlines
 pSym = do
+  smart <- getOption optSmart
   SYM c <- satisfyTok isSymTok
-  return $ txt $ T.singleton c
+  return $ txt $ T.singleton $
+    if c == '\'' && smart
+       then '\8217'
+       else c
 
 pSp :: PMonad m => P m Inlines
 pSp = space *> option (inline Sp)
@@ -74,11 +78,11 @@ pSp = space *> option (inline Sp)
 
 pWord :: PMonad m => P m Inlines
 pWord = do
-  x <- satisfyTok isWordTok
+  let wordTok = satisfyTok isWordTok
+  x <- wordTok
   smart <- getOption optSmart
   let apos  = if smart
-                 then try (SYM '\8217' <$ sym '\'' <*
-                            lookAhead (satisfyTok isWordTok))
+                 then try (SYM '\8217' <$ sym '\'' <* lookAhead wordTok)
                  else mzero
   let chunk = satisfyTok isWordTok
            <|> (try $ sym '_' <* lookAhead chunk)
