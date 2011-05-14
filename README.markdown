@@ -72,8 +72,8 @@ Observations
 The code is cleaner and shorter.
 
 Performance is significantly faster than pandoc, even with the `--strict`
-flag. `resolveRefs` is slow, perhaps because of the generics, and might be
-improved by a custom Uniplate instance.
+flag. `resolveRefs` was made much faster by hand-coding it instead of
+using generics.
 
 To run the Markdown test suite, do `make test`. To run the PHP Markdown test
 suite, do `make phptests`. Several of the PHP tests fail, but in many of these
