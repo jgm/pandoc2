@@ -13,7 +13,7 @@ Tested-With:     GHC == 7.0.1
 Synopsis:        Conversion between markup formats
 Description:     This is a testbed for the next version of pandoc, a Haskell
                  library and program for converting between markup formats.
-Data-Files:      README, COPYING
+Data-Files:      README.markdown, COPYING
 Library
   Build-Depends: base >= 4 && < 5,
                  containers >= 0.1 && < 0.5,
