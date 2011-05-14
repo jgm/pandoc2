@@ -16,6 +16,9 @@ inline = Inlines . singleton
 txt :: Text -> Inlines
 txt = inline . Txt
 
+ch :: Char -> Inlines
+ch = inline . Txt . T.singleton
+
 (<+>) :: Inlines -> Inlines -> Inlines
 x <+> y = x <> inline Sp <> y
 

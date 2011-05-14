@@ -6,7 +6,7 @@ import Text.Pandoc.Definition
 import Text.Pandoc.Builder
 import Text.Pandoc.Shared
 import Data.Traversable (sequenceA)
-import Data.Char (isLetter)
+import Data.Char (isLetter, isAlphaNum)
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad
@@ -36,7 +36,7 @@ tokenize' stop pos t =
   case T.uncons t of
        Nothing     -> [NEWLINE]
        Just (c, _) | isLetter c ->
-         case T.span isLetter t of
+         case T.span isAlphaNum t of
               (x,y) -> WORD x : tokenize'' (pos + T.length x) y
        Just ('\t', t') ->
               let n = stop - pos `mod` stop

@@ -53,7 +53,7 @@ pEscaped = try $ do
   sym '\\'
   strict <- getOption optStrict
   SYM c <- satisfyTok (if strict then isEscapable else isSymTok)
-  return $ txt $ T.singleton c
+  return $ ch c
 
 isEscapable :: Tok -> Bool
 isEscapable (SYM c) =
@@ -65,8 +65,28 @@ isEscapable _ = False
 
 pSym :: PMonad m => P m Inlines
 pSym = do
+  smart <- getOption optSmart
   SYM c <- satisfyTok isSymTok
-  return $ txt $ T.singleton $ c
+  case c of
+       '.' | smart -> option (ch '.') pEllipses
+       '-' | smart -> option (ch '-') (pEnDash <|> pEmDash)
+       _           -> return (ch c)
+
+pEllipses :: PMonad m => P m Inlines
+pEllipses = try $ -- we've already parsed one '.'
+  ch '\8230' <$ (sym '.' *> sym '.')
+
+pEnDash :: PMonad m => P m Inlines
+pEnDash = -- we've already parsed one '-'
+  ch '\8211' <$ lookAhead pDigit
+   where pDigit = satisfyTok $ \t ->
+                     case t of
+                          SYM d | isDigit d -> True
+                          _                 -> False
+
+pEmDash :: PMonad m => P m Inlines
+pEmDash = -- we've already parsed one '-'
+  ch '\8212' <$ (sym '-' *> optional (sym '-'))
 
 pSp :: PMonad m => P m Inlines
 pSp = space *> option (inline Sp)
@@ -174,7 +194,7 @@ pQuoted = try $ do
   getOption optSmart >>= guard
   SYM c <- satisfyTok isSymTok <|> SYM <$> pEntityChar
   case c of
-       '\'' -> option (txt $ T.singleton '\8217') $
+       '\'' -> option (ch '\8217') $
                  pQuotedWith SingleQuoted pInline
        '"'  -> option (txt "\"") $
                  pQuotedWith DoubleQuoted pInline
@@ -420,5 +440,5 @@ blockTags = [ "address", "blockquote", "center", "del", "dir", "div",
               "thead", "tr", "script" ]
 
 pEntity :: PMonad m => P m Inlines
-pEntity = txt . T.singleton <$> pEntityChar
+pEntity = ch <$> pEntityChar
 
