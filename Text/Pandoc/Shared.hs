@@ -32,6 +32,7 @@ data POptions =
   POptions { optLogLevel :: LogLevel
            , optTabStop  :: Int
            , optStrict   :: Bool  -- ^ Use standard markdown syntax, no exts.
+           , optSmart    :: Bool  -- ^ Smart typography
            }
 
 -- | Default parser options.
@@ -39,6 +40,7 @@ poptions :: POptions
 poptions = POptions { optLogLevel = WARNING
                     , optTabStop  = 4
                     , optStrict   = False
+                    , optSmart    = False
                     }
 
 -- | Trim leading and trailing Sp (spaces) from an Inlines.
