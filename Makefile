@@ -14,11 +14,11 @@ clean:
 
 test: markdowntests
 
-markdowntests: all
+markdowntests:
 	cd Tests && \
 	perl MarkdownTest.pl --testdir=Tests_Markdown_1.0.3 -s ./markdown --tidy
 
-phptests: all
+phptests:
 	cd Tests && \
 	perl MarkdownTest.pl --testdir=Tests_PHP_Markdown -s ./markdown  --tidy
 
