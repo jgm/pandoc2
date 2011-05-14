@@ -29,14 +29,16 @@ instance Show Message where
              show (sourceColumn p) ++ ")"
 
 data POptions =
-  POptions { optLogLevel  :: LogLevel
-           , optTabStop   :: Int
+  POptions { optLogLevel :: LogLevel
+           , optTabStop  :: Int
+           , optStrict   :: Bool  -- ^ Use standard markdown syntax, no exts.
            }
 
 -- | Default parser options.
 poptions :: POptions
-poptions = POptions { optLogLevel  = WARNING
-                    , optTabStop   = 4
+poptions = POptions { optLogLevel = WARNING
+                    , optTabStop  = 4
+                    , optStrict   = False
                     }
 
 -- | Trim leading and trailing Sp (spaces) from an Inlines.
@@ -63,16 +65,4 @@ escapeURI = T.pack . escapeURIString isAllowedInURI .
 -- | Version of 'show' that works for any 'IsString' instance.
 show' :: (Show a, IsString b) => a -> b
 show' = fromString . show
-
--- | Convert tabs to spaces.
-convertTabs :: Int -> Text -> Text
-convertTabs tabstop = T.unlines . Prelude.map convertTabL . T.lines
-  where convertTabL l =
-          case T.break (=='\t') l of
-                (_,x) | T.null x -> l
-                (x,y) -> x <> ss <> convertTabL (T.tail y)
-                          where ss = T.replicate (tabstop - (n `mod` tabstop)) s
-                                s  = T.pack " "
-                                n  = T.length x
-
 
