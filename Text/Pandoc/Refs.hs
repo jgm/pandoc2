@@ -36,6 +36,7 @@ handleRefI refs x =
   in case x of
       (Emph ils)       -> inline $ Emph $ goI ils
       (Strong ils)     -> inline $ Strong $ goI ils
+      (Quoted qt ils)  -> inline $ Quoted qt $ goI ils
       (Link (Label lab) Ref{ key = k, fallback = ils }) ->
         case M.lookup k refs of
              Just s  -> inline $ Link (Label $ goI lab) s
