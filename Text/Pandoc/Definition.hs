@@ -32,6 +32,7 @@ data Inline = Txt Text
             | Quoted QuoteType Inlines
             | LineBreak
             | RawInline Format Text
+            | Note Blocks
             deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 data QuoteType = SingleQuoted | DoubleQuoted

@@ -52,6 +52,9 @@ lineBreak = inline LineBreak
 rawInline :: Format -> Text -> Inlines
 rawInline f = inline . RawInline f
 
+note :: Blocks -> Inlines
+note = inline . Note
+
 block :: Block -> Blocks
 block = Blocks . singleton
 

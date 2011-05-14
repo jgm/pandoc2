@@ -33,6 +33,7 @@ handleRefB refs x =
 handleRefI :: M.Map Key Source -> Inline -> Inlines
 handleRefI refs x =
   let goI = F.foldMap (handleRefI refs) . unInlines
+      goB = F.foldMap (handleRefB refs) . unBlocks
   in case x of
       (Emph ils)       -> inline $ Emph $ goI ils
       (Strong ils)     -> inline $ Strong $ goI ils
@@ -45,5 +46,6 @@ handleRefI refs x =
         case M.lookup k refs of
              Just s  -> inline $ Image (Label $ goI lab) s
              Nothing -> goI ils
+      (Note bs)        -> inline $ Note $ goB bs
       _                -> inline x
 
