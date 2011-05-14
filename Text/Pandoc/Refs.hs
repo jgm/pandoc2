@@ -46,6 +46,6 @@ handleRefI refs x =
         case M.lookup k refs of
              Just s  -> inline $ Image (Label $ goI lab) s
              Nothing -> goI ils
-      (Note bs)        -> inline $ Note $ goB bs
+      (Note k bs)      -> inline $ Note k $ goB bs
       _                -> inline x
 

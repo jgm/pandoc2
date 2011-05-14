@@ -53,7 +53,7 @@ rawInline :: Format -> Text -> Inlines
 rawInline f = inline . RawInline f
 
 note :: Blocks -> Inlines
-note = inline . Note
+note = inline . Note (Key "")
 
 block :: Block -> Blocks
 block = Blocks . singleton

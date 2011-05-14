@@ -99,13 +99,13 @@ inlineToHtml (Quoted SingleQuoted ils) = do
 inlineToHtml (Quoted DoubleQuoted ils) = do
   xs <- inlinesToHtml ils
   return $ "\8220" <> xs <> "\8221"
-inlineToHtml (Note bs) = do
+inlineToHtml (Note _key bs) = do
+  contents <- blocksToHtml bs
   notes <- wNotes <$> get
   let nextnum = show $ length notes + 1
   let refid = "fnref" ++ nextnum
   let noteid = "fn" ++ nextnum
   let marker = H.sup $ toHtml nextnum
-  contents <- blocksToHtml bs
   let fn = H.li ! A.id (toValue noteid)
                 ! A.href (toValue $ '#':refid)
                 ! A.class_ "footnote"
