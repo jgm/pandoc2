@@ -5,6 +5,7 @@ import Text.Pandoc.Definition
 import Text.Pandoc.Shared
 import Text.Pandoc.Parsing
 import Text.Pandoc.Builder
+import Text.Pandoc.Refs (resolveRefs)
 import qualified Data.Sequence as Seq
 import Data.Sequence (viewl, ViewL(..))
 import Data.Monoid
@@ -22,45 +23,7 @@ import Text.HTML.TagSoup.Entity (lookupEntity)
 -- Document-level parsers
 
 pDoc :: PMonad m => P m Blocks
-pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof >>= pResolveRefs
-
--- Reference resolution
-
-pResolveRefs :: PMonad m => Blocks -> P m Blocks
-pResolveRefs bs = do
-  refs <- sReferences <$> getState
-  return $ handleRefs refs bs
-
-handleRefs :: M.Map Key Source -> Blocks -> Blocks
-handleRefs refs = F.foldMap (handleRefB refs) . unBlocks
-
-handleRefB :: M.Map Key Source -> Block -> Blocks
-handleRefB refs x =
-  let goI = F.foldMap (handleRefI refs) . unInlines
-      goB = F.foldMap (handleRefB refs) . unBlocks
-  in case x of
-      (Para ils)       -> para $ goI ils
-      (Plain ils)      -> block $ Plain $ goI ils
-      (Quote bs)       -> quote $ goB bs
-      (List attr its)  -> block $ List attr $ map goB its
-      (Header lev ils) -> header lev $ goI ils
-      _                -> block x
-
-handleRefI :: M.Map Key Source -> Inline -> Inlines
-handleRefI refs x =
-  let goI = F.foldMap (handleRefI refs) . unInlines
-  in case x of
-      (Emph ils)       -> inline $ Emph $ goI ils
-      (Strong ils)     -> inline $ Strong $ goI ils
-      (Link (Label lab) Ref{ key = k, fallback = ils }) ->
-        case M.lookup k refs of
-             Just s  -> inline $ Link (Label $ goI lab) s
-             Nothing -> goI ils
-      (Image (Label lab) Ref{ key = k, fallback = ils }) ->
-        case M.lookup k refs of
-             Just s  -> inline $ Image (Label $ goI lab) s
-             Nothing -> goI ils
-      _                -> inline x
+pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
 
 -- Inline parsers
 
