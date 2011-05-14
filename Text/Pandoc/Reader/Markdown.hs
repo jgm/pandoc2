@@ -75,8 +75,14 @@ pSp = space *> option (inline Sp)
 pWord :: PMonad m => P m Inlines
 pWord = do
   x <- satisfyTok isWordTok
+  smart <- getOption optSmart
+  let apos  = if smart
+                 then try (SYM '\8217' <$ sym '\'' <*
+                            lookAhead (satisfyTok isWordTok))
+                 else mzero
   let chunk = satisfyTok isWordTok
            <|> (try $ sym '_' <* lookAhead chunk)
+           <|> apos
   xs <- many chunk
   return $ txt $ toksToText (x:xs)
 
