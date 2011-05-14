@@ -15,7 +15,8 @@ main = do
                                                 Quiet  -> ERROR
                                                 Normal -> WARNING
                                                 Loud   -> INFO
-                           , optTabStop = tab_stop opts }
+                           , optTabStop = tab_stop opts
+                           , optStrict = strict opts }
   let convert x = parseWith poptions' pDoc (decodeUtf8 x)
                   >>= renderHtmlToByteStringIO B.putStr . docToHtml poptions
   case files opts of
@@ -25,12 +26,14 @@ main = do
 data Pandoc2 = Pandoc2
     { tab_stop    :: Int
     , files       :: [FilePath]
+    , strict      :: Bool
     }
     deriving (Data,Typeable,Show,Eq)
 
 opts = Pandoc2
     { tab_stop    = 4 &= groupname "Options" &= help "Tab stop"
     , files       = def &= args &= typ "FILE.."
+    , strict      = def &= help "Disable pandoc's markdown extensions"
     } &=
     program "pandoc2" &=
     verbosity &=
