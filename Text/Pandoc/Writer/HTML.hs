@@ -7,16 +7,17 @@ import Text.Pandoc.Shared (POptions)
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Data.Foldable as F
+import qualified Data.Foldable as F
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import Data.Generics.Uniplate.Operations (transformBi)
+import Data.List (intersperse)
 import Control.Monad.State
 import Control.Applicative
 
 data WriterState = WriterState { wOptions :: POptions
-                               , wNotes   :: [Blocks] }
+                               , wNotes   :: [Html] }
 
 type W = State WriterState Html
 
@@ -28,9 +29,16 @@ nl :: W
 nl = return $ preEscapedText "\n"
 
 docToHtml :: POptions -> Blocks -> Html
-docToHtml opts bs = evalState (blocksToHtml bs)
-                    WriterState{ wOptions = opts
-                               , wNotes   = [] }
+docToHtml opts bs =
+  evalState goHtml WriterState{ wOptions = opts, wNotes   = [] }
+    where goHtml = do body <- blocksToHtml bs
+                      notes <- reverse . wNotes <$> get
+                      spacer <- nl
+                      let fnblock = H.ol ! A.id "footnotes"
+                                        $  spacer
+                                        <> mconcat (intersperse spacer notes)
+                                        <> spacer
+                      return $ body <> fnblock
 
 blocksToHtml :: Blocks -> W
 blocksToHtml = F.foldMap (\b -> blockToHtml b <> nl) . unBlocks
@@ -93,7 +101,15 @@ inlineToHtml (Quoted DoubleQuoted ils) = do
   return $ "\8220" <> xs <> "\8221"
 inlineToHtml (Note bs) = do
   notes <- wNotes <$> get
-  let nextnum = length notes + 1
-  modify $ \st -> st{ wNotes = bs : notes }
-  let marker = H.sup (toHtml $ show nextnum)
-  return marker
+  let nextnum = show $ length notes + 1
+  let refid = "fnref" ++ nextnum
+  let noteid = "fn" ++ nextnum
+  let marker = H.sup $ toHtml nextnum
+  contents <- blocksToHtml bs
+  let fn = H.li ! A.id (toValue noteid)
+                ! A.href (toValue $ '#':refid)
+                ! A.class_ "footnote"
+                $ contents
+  modify $ \st -> st{ wNotes = fn : notes }
+  return $ marker ! A.id (toValue refid)
+                  ! A.href (toValue $ '#':noteid)
