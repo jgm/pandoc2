@@ -135,3 +135,7 @@ instance Listable Blocks Block where
   fromItems = Blocks . Seq.fromList
   mapItems f = F.foldMap f . unBlocks
 
+-- | Trim leading and trailing Sp (spaces) from an Inlines.
+trimInlines :: Inlines -> Inlines
+trimInlines (Inlines ils) = Inlines $ Seq.dropWhileL (== Sp) $
+                            Seq.dropWhileR (== Sp) $ ils

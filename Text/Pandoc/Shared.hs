@@ -6,7 +6,6 @@ import Text.Pandoc.Builder
 import qualified Data.Foldable as F
 import Data.Data
 import Data.Monoid
-import Data.Sequence as Seq
 import qualified Data.Text.Encoding as E
 import qualified Data.ByteString.Char8 as B8
 import Text.Parsec (SourcePos, sourceLine, sourceColumn)
@@ -43,11 +42,6 @@ poptions = POptions { optLogLevel = WARNING
                     , optStrict   = False
                     , optSmart    = False
                     }
-
--- | Trim leading and trailing Sp (spaces) from an Inlines.
-trimInlines :: Inlines -> Inlines
-trimInlines (Inlines ils) = Inlines $ dropWhileL (== Sp) $
-                            dropWhileR (== Sp) $ ils
 
 -- | Concatenate and trim inlines.
 toInlines :: [Inlines] -> Inlines
