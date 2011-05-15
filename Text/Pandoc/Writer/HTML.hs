@@ -5,7 +5,6 @@ import Text.Pandoc.Definition
 import Text.Pandoc.Builder ((<+>), rawInline)
 import Text.Pandoc.Shared (textify, POptions(..))
 import Text.Blaze
-import Data.Sequence (ViewR(..), viewr, (|>))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Data.Foldable as F
@@ -124,11 +123,10 @@ inlineToHtml (Note _key bs) = do
   return marker
 
 addBacklink :: String -> Blocks -> Blocks
-addBacklink refid (Blocks bs) =
+addBacklink refid bs =
   let back = rawInline (Format "html")
            $ "<a href=\"" <> T.pack ('#':refid) <> "\" class=\"footnoteBackLink\" title=\"Back to text\">&#8617;</a>"
-  in Blocks $
-     case viewr bs of
-       xs :> (Para ils)  -> xs |> Para  (ils <+> back)
-       xs :> (Plain ils) -> xs |> Plain (ils <+> back)
-       _                 -> bs |> Plain back
+  in case reverse (toItems bs) of
+       (Para ils : xs)   -> fromItems $ reverse $ Para (ils <+> back) : xs
+       (Plain xls : xs)  -> fromItems $ reverse $ Plain (xls <+> back) : xs
+       xs                -> fromItems $ reverse $ Plain back : xs
