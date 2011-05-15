@@ -1,3 +1,9 @@
+Avoid the need for tree-crawling entirely by
+returning PBlocks and PInlines instead of
+blocks + inlines - where PBlocks is a function
+from State -> Blocks. Can define Monoid for this
+etc.
+
 Too much exposure of the Seq inside Blocks, Inlines.
 
 TODO:
