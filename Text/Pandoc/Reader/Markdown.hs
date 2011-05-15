@@ -28,7 +28,7 @@ pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
 
 pInline :: PMonad m => P m Inlines
 pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
-            pStrong, pEmph, pVerbatim, pImage, pLink, pAutolink,
+            pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
             pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
 
 pInlines :: PMonad m => P m Inlines
@@ -226,6 +226,15 @@ pStrong = strong <$>
 pInlineNote :: PMonad m => P m Inlines
 pInlineNote = note . plain
   <$> (unlessStrict *> try (sym '^' *> pBracketedInlines))
+
+pNoteRef :: PMonad m => P m Inlines
+pNoteRef = do
+  k <- pNoteMarker
+  -- the key is also the fallback, so we wrap in [^...]
+  return $ inline $ Note (Key $ txt $ "[^" <> k <> "]") mempty
+
+pNoteMarker :: PMonad m => P m Text
+pNoteMarker = try $ sym '[' *> sym '^' *> text1Till nonSpace (sym ']')
 
 -- Block parsers
 
