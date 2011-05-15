@@ -2,8 +2,6 @@
 
 module Text.Pandoc.Shared where
 import Text.Pandoc.Definition
-import Text.Pandoc.Builder
-import qualified Data.Foldable as F
 import Data.Data
 import Data.Monoid
 import qualified Data.Text.Encoding as E
@@ -49,10 +47,10 @@ toInlines = trimInlines . mconcat
 
 -- | Remove links from 'Inlines'.
 delink :: Inlines -> Inlines
-delink = Inlines . F.foldMap (unInlines . go) . unInlines
+delink = mapItems go
   where go (Link _ (Ref { fallback = f })) = f
         go (Link (Label lab) _)            = lab
-        go x                               = inline x
+        go x                               = single x
 
 -- | Escape a URI, converting to UTF-8 octets, then URI encoding them.
 escapeURI :: Text -> Text

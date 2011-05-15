@@ -1,6 +1,24 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings,
    MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
 module Text.Pandoc.Definition
+       ( Block(..)
+       , Inline(..)
+       , Blocks
+       , Inlines
+       , Label(..)
+       , Source(..)
+       , Format(..)
+       , QuoteType(..)
+       , ListAttr(..)
+       , ListStyle(..)
+       , Key(..)
+       , Attr(..)
+       , nullAttr
+       , (<>)
+       , Listable(..)
+       , trimInlines
+       )
+
 where
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq, viewr, ViewR(..), (|>), ViewL(..), viewl)
@@ -121,21 +139,28 @@ instance Read Blocks where
   readsPrec n = map (\(x,y) -> (Blocks . Seq.fromList $ x, y)) . readsPrec n
 
 class Listable a b where
-  toItems   :: a   -> [b]
-  fromItems :: [b] -> a
-  mapItems  :: (b -> a) -> a -> a
+  toItems    :: a -> [b]
+  fromItems  :: [b] -> a
+  mapItems   :: (b -> a) -> a -> a
+  single     :: b -> a
+  foldItemsM :: Monad m => (a -> b -> m a) -> a -> a -> m a
 
 instance Listable Inlines Inline where
-  toItems    = F.toList . unInlines
-  fromItems  = Inlines . Seq.fromList
-  mapItems f = F.foldMap f . unInlines
+  toItems        = F.toList . unInlines
+  fromItems      = Inlines . Seq.fromList
+  mapItems f     = F.foldMap f . unInlines
+  single         = Inlines . Seq.singleton
+  foldItemsM f x = F.foldlM f x . unInlines
 
 instance Listable Blocks Block where
-  toItems   = F.toList . unBlocks
-  fromItems = Blocks . Seq.fromList
-  mapItems f = F.foldMap f . unBlocks
+  toItems        = F.toList . unBlocks
+  fromItems      = Blocks . Seq.fromList
+  mapItems f     = F.foldMap f . unBlocks
+  single         = Blocks . Seq.singleton
+  foldItemsM f x = F.foldlM f x . unBlocks
 
 -- | Trim leading and trailing Sp (spaces) from an Inlines.
 trimInlines :: Inlines -> Inlines
 trimInlines (Inlines ils) = Inlines $ Seq.dropWhileL (== Sp) $
                             Seq.dropWhileR (== Sp) $ ils
+

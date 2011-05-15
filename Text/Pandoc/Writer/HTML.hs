@@ -7,8 +7,8 @@ import Text.Pandoc.Shared (textify, POptions(..))
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import qualified Data.Foldable as F
 import Data.Monoid
+import qualified Data.Foldable as F
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import Data.Generics.Uniplate.Operations (transformBi)
@@ -46,7 +46,7 @@ docToHtml opts bs =
                                           else fnblock
 
 blocksToHtml :: Blocks -> W
-blocksToHtml = F.foldMap (\b -> blockToHtml b <> nl) . unBlocks
+blocksToHtml bs = mconcat <$> (mapM (\b -> blockToHtml b <> nl) $ toItems bs)
 
 blockToHtml :: Block -> W
 blockToHtml (Para ils) = H.p <$> inlinesToHtml ils
@@ -76,7 +76,7 @@ blockToHtml (Header lev ils) = h <$> inlinesToHtml ils
 blockToHtml HRule = return H.hr
 
 inlinesToHtml :: Inlines -> W
-inlinesToHtml = F.foldMap inlineToHtml . unInlines
+inlinesToHtml ils = mconcat <$> (mapM inlineToHtml $ toItems ils)
 
 inlineToHtml :: Inline -> W
 inlineToHtml (Txt x) = return $ toHtml x

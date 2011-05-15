@@ -3,97 +3,90 @@
 module Text.Pandoc.Builder
 where
 import Text.Pandoc.Definition
-import Data.Sequence hiding (null)
 import qualified Data.Text as T
 import Data.Text (Text)
 
 -- Pandoc builder DSL
 
-inline :: Inline -> Inlines
-inline = Inlines . singleton
-
 txt :: Text -> Inlines
-txt = inline . Txt
+txt = single . Txt
 
 ch :: Char -> Inlines
-ch = inline . Txt . T.singleton
+ch = single . Txt . T.singleton
 
 (<+>) :: Inlines -> Inlines -> Inlines
-x <+> y = x <> inline Sp <> y
+x <+> y = x <> single Sp <> y
 
 emph :: Inlines -> Inlines
-emph = inline . Emph
+emph = single . Emph
 
 strong :: Inlines -> Inlines
-strong = inline . Strong
+strong = single . Strong
 
 link :: Inlines -> Source -> Inlines
-link lab src = inline $ Link (Label lab) src
+link lab src = single $ Link (Label lab) src
 
 image :: Inlines -> Source -> Inlines
-image lab src = inline $ Image (Label lab) src
+image lab src = single $ Image (Label lab) src
 
 verbatim :: Text -> Inlines
 verbatim = verbatimAttr nullAttr
 
 verbatimAttr :: Attr -> Text -> Inlines
-verbatimAttr attr = inline . Verbatim attr
+verbatimAttr attr = single . Verbatim attr
 
 singleQuoted :: Inlines -> Inlines
-singleQuoted = inline . Quoted SingleQuoted
+singleQuoted = single . Quoted SingleQuoted
 
 doubleQuoted :: Inlines -> Inlines
-doubleQuoted = inline . Quoted DoubleQuoted
+doubleQuoted = single . Quoted DoubleQuoted
 
 lineBreak :: Inlines
-lineBreak = inline LineBreak
+lineBreak = single LineBreak
 
 rawInline :: Format -> Text -> Inlines
-rawInline f = inline . RawInline f
+rawInline f = single . RawInline f
 
 note :: Blocks -> Inlines
-note = inline . Note (Key "")
-
-block :: Block -> Blocks
-block = Blocks . singleton
+note = single . Note (Key "")
 
 para :: Inlines -> Blocks
-para = block . Para
+para = single . Para
 
 plain :: Inlines -> Blocks
-plain = block . Plain
+plain = single . Plain
 
 quote :: Blocks -> Blocks
-quote = block . Quote
+quote = single . Quote
 
 codeAttr :: Attr -> Text -> Blocks
-codeAttr attr = block . Code attr
+codeAttr attr = single . Code attr
 
 code :: Text -> Blocks
 code = codeAttr nullAttr
 
 orderedListTight :: [Blocks] -> Blocks
 orderedListTight =
-  block . List ListAttr{ listTight = True, listStyle = Ordered }
+  single . List ListAttr{ listTight = True, listStyle = Ordered }
 
 orderedListLoose :: [Blocks] -> Blocks
 orderedListLoose =
-  block . List ListAttr{ listTight = False, listStyle = Ordered }
+  single . List ListAttr{ listTight = False, listStyle = Ordered }
 
 bulletListTight :: [Blocks] -> Blocks
 bulletListTight =
-  block . List ListAttr{ listTight = True, listStyle = Bullet }
+  single . List ListAttr{ listTight = True, listStyle = Bullet }
 
 bulletListLoose :: [Blocks] -> Blocks
 bulletListLoose =
-  block . List ListAttr{ listTight = False, listStyle = Bullet }
+  single . List ListAttr{ listTight = False, listStyle = Bullet }
 
 header :: Int -> Inlines -> Blocks
-header n = block . Header n
+header n = single . Header n
 
 rawBlock :: Format -> Text -> Blocks
-rawBlock f = block . RawBlock f
+rawBlock f = single . RawBlock f
 
 hrule :: Blocks
-hrule = block HRule
+hrule = single HRule
 

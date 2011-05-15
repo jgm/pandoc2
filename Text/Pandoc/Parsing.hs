@@ -3,7 +3,6 @@
 module Text.Pandoc.Parsing
 where
 import Text.Pandoc.Definition
-import Text.Pandoc.Builder
 import Text.Pandoc.Shared
 import Data.Traversable (sequenceA)
 import Data.Char (isLetter, isAlphaNum)
@@ -331,7 +330,7 @@ pNewline = try $ spnl *> pBlockSep
 pEndline :: PMonad m => P m Inlines
 pEndline = try $
   newline *> (getState >>= sequenceA . sEndline) *> sps *>
-  lookAhead nonNewline *> return (inline Sp)
+  lookAhead nonNewline *> return (single Sp)
 
 -- | Parses line-ending spaces, if present, and optionally
 -- an endline followed by any spaces at the beginning of
@@ -361,7 +360,7 @@ pEntityChar = try $ do
 -- quote parsers
 
 pQuotedWith :: PMonad m => QuoteType -> P m Inlines -> P m Inlines
-pQuotedWith qt ins = inline . Quoted qt <$>
+pQuotedWith qt ins = single . Quoted qt <$>
     (withQuoteContext qt $ toInlines <$> many1Till ins (quoteEnd qt))
 
 withQuoteContext :: PMonad m => QuoteType -> P m Inlines -> P m Inlines

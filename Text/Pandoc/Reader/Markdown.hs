@@ -11,7 +11,6 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Char (toLower, isDigit)
-import qualified Data.Foldable as F
 import Text.Parsec hiding (sepBy, space, newline)
 import Control.Monad
 import Control.Applicative ((<$>), (<$), (*>), (<*))
@@ -87,8 +86,8 @@ pEmDash = -- we've already parsed one '-'
   ch '\8212' <$ (sym '-' *> optional (sym '-'))
 
 pSp :: PMonad m => P m Inlines
-pSp = space *> option (inline Sp)
-        (skipMany1 space *> option (inline Sp) (lineBreak <$ pEndline))
+pSp = space *> option (single Sp)
+        (skipMany1 space *> option (single Sp) (lineBreak <$ pEndline))
 
 pWord :: PMonad m => P m Inlines
 pWord = do
@@ -132,8 +131,8 @@ pBracketedInlines = try $
 pImage :: PMonad m => P m Inlines
 pImage = try $ do
   sym '!'
-  [Link lab x] <- F.toList . unInlines <$> pLink
-  return $ inline $ Image lab x
+  [Link lab x] <- toItems <$> pLink
+  return $ single $ Image lab x
 
 pLink :: PMonad m => P m Inlines
 pLink = try $ do
@@ -151,7 +150,7 @@ pReferenceLink lab ref = try $ do
               let k' = if ils == mempty then key ref else Key ils
               let f' = fallback ref <> s <> "[" <> ils <> "]"
               return $ Ref{ key = k', fallback = f' }
-  return $ inline $ Link lab ref'
+  return $ single $ Link lab ref'
 
 pExplicitLink :: PMonad m => Label -> P m Inlines
 pExplicitLink lab = try $ do
@@ -161,7 +160,7 @@ pExplicitLink lab = try $ do
   tit <- option "" $ try $ spOptNl *> pTitle
   sps
   sym ')'
-  return $ inline $ Link lab Source{ location = escapeURI src, title = tit }
+  return $ single $ Link lab Source{ location = escapeURI src, title = tit }
 
 pSource :: PMonad m => P m Text
 pSource = angleSource <|> regSource
@@ -228,7 +227,7 @@ pInlineNote = note . para
 pNoteRef :: PMonad m => P m Inlines
 pNoteRef = do
   k <- pNoteMarker
-  return $ inline $ Note (Key k) mempty
+  return $ single $ Note (Key k) mempty
 
 pNoteMarker :: PMonad m => P m Inlines
 pNoteMarker = try $ do
@@ -285,7 +284,7 @@ pList = do
   (mark, style) <- lookAhead
                  $ ((enum, Ordered) <$ enum) <|> ((bullet, Bullet) <$ bullet)
   (tights, bs) <- unzip <$> many1 (pListItem mark)
-  return $ block $ List ListAttr{ listTight = and tights, listStyle = style } bs
+  return $ single $ List ListAttr{ listTight = and tights, listStyle = style } bs
 
 pListItem :: PMonad m
           => P m a -> P m (Bool, Blocks) -- True = suitable for tight list
