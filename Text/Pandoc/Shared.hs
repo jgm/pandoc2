@@ -14,6 +14,7 @@ import Data.String
 import Data.Text (Text)
 import Network.URI ( escapeURIString, isAllowedInURI )
 import qualified Data.Text as T
+import Data.Generics.Uniplate.Data
 
 data LogLevel = INFO | WARNING | ERROR
               deriving (Ord, Eq, Show, Read, Data, Typeable)
@@ -67,4 +68,13 @@ escapeURI = T.pack . escapeURIString isAllowedInURI .
 -- | Version of 'show' that works for any 'IsString' instance.
 show' :: (Show a, IsString b) => a -> b
 show' = fromString . show
+
+-- | Convert inlines to plain text.
+textify :: Inlines -> Text
+textify = T.concat . map extractText . universeBi
+  where extractText :: Inline -> Text
+        extractText (Txt t)   = t
+        extractText Sp        = T.singleton ' '
+        extractText LineBreak = T.singleton ' '
+        extractText _         = T.singleton ' '
 

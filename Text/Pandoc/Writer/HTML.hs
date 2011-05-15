@@ -2,8 +2,8 @@
     TypeSynonymInstances #-}
 module Text.Pandoc.Writer.HTML (docToHtml) where
 import Text.Pandoc.Definition
-import Text.Pandoc.Builder (textify, (<+>), rawInline)
-import Text.Pandoc.Shared (POptions(..))
+import Text.Pandoc.Builder ((<+>), rawInline)
+import Text.Pandoc.Shared (textify, POptions(..))
 import Text.Blaze
 import Data.Sequence (ViewR(..), viewr, (|>))
 import qualified Text.Blaze.Html5 as H

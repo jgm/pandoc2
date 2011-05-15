@@ -6,7 +6,6 @@ import Text.Pandoc.Definition
 import Data.Sequence hiding (null)
 import qualified Data.Text as T
 import Data.Text (Text)
-import Data.Generics.Uniplate.Data
 
 -- Pandoc builder DSL
 
@@ -98,12 +97,3 @@ rawBlock f = block . RawBlock f
 hrule :: Blocks
 hrule = block HRule
 
------------------
-
-textify :: Inlines -> Text
-textify = T.concat . map extractText . universeBi
-  where extractText :: Inline -> Text
-        extractText (Txt t)   = t
-        extractText Sp        = " "
-        extractText LineBreak = " "
-        extractText _         = ""
