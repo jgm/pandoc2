@@ -3,7 +3,7 @@
 module Text.Pandoc.Writer.HTML (docToHtml) where
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder (textify)
-import Text.Pandoc.Shared (POptions)
+import Text.Pandoc.Shared (POptions(..))
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -38,7 +38,9 @@ docToHtml opts bs =
                                         $  spacer
                                         <> mconcat (intersperse spacer notes)
                                         <> spacer
-                      return $ body <> fnblock
+                      return $ body <> if null notes
+                                          then mempty
+                                          else fnblock
 
 blocksToHtml :: Blocks -> W
 blocksToHtml = F.foldMap (\b -> blockToHtml b <> nl) . unBlocks
