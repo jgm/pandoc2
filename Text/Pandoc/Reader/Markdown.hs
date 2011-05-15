@@ -224,22 +224,25 @@ pStrong = strong <$>
           ulEnd     = try (count 2 (sym '_'))
 
 pInlineNote :: PMonad m => P m Inlines
-pInlineNote = note . plain
+pInlineNote = note . para
   <$> (unlessStrict *> try (sym '^' *> pBracketedInlines))
 
 pNoteRef :: PMonad m => P m Inlines
 pNoteRef = do
   k <- pNoteMarker
-  -- the key is also the fallback, so we wrap in [^...]
-  return $ inline $ Note (Key $ txt $ "[^" <> k <> "]") mempty
+  return $ inline $ Note (Key k) mempty
 
-pNoteMarker :: PMonad m => P m Text
-pNoteMarker = try $ sym '[' *> sym '^' *> text1Till nonSpace (sym ']')
+pNoteMarker :: PMonad m => P m Inlines
+pNoteMarker = try $ do
+  sym '[' *> sym '^'
+  x <- text1Till nonSpace (sym ']')
+  -- the key is also the fallback, so we wrap in [^...]
+  return $ txt $ "[^" <> x <> "]"
 
 -- Block parsers
 
 pBlock :: PMonad m => P m Blocks
-pBlock = choice [pQuote, pCode, pHrule, pList, pReference,
+pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
                  pHeader, pHtmlBlock, pPara]
 
 pBlocks :: PMonad m => P m Blocks
@@ -379,6 +382,16 @@ pRefTitle =  pRefTitleWith '\'' '\''
          <|> pRefTitleWith '(' ')'
   where pRefTitleWith start end = sym start *>
           textTill nonNewline (try $ sym end *> eol)
+
+pNote :: PMonad m => P m Blocks
+pNote = try $ do
+  nonindentSpace
+  k <- pNoteMarker
+  sym ':'
+  bs <- withBlockSep (indentSpace <|> eol) $ do
+          mconcat <$> (pBlock `sepBy` (pNewlines *> notFollowedBy spnl))
+  modifyState $ \st -> st{ sNotes = M.insert (Key k) bs $ sNotes st }
+  return mempty
 
 -- HTML related parsers
 

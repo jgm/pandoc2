@@ -70,8 +70,8 @@ foreach my $testfile (glob "$test_dir/*.text") {
 		#  Escape the strings, pass them through to CLI tidy tool for tag-level equivalency
 		$t_result =~ s{'}{'\\''}g; # escape ' chars for shell
 		$t_output =~ s{'}{'\\''}g;
-		$t_result = `echo '$t_result' | tidy --show-body-only 1 --quiet 1 --show-warnings 0`;
-		$t_output = `echo '$t_output' | tidy --show-body-only 1 --quiet 1 --show-warnings 0`;
+		$t_result = `echo '$t_result' | tidy -utf8 --show-body-only 1 --quiet 1 --show-warnings 0`;
+		$t_output = `echo '$t_output' | tidy -utf8 --show-body-only 1 --quiet 1 --show-warnings 0`;
 	}
 
 	if ($t_output eq $t_result) {

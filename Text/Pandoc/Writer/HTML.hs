@@ -2,9 +2,10 @@
     TypeSynonymInstances #-}
 module Text.Pandoc.Writer.HTML (docToHtml) where
 import Text.Pandoc.Definition
-import Text.Pandoc.Builder (textify)
+import Text.Pandoc.Builder (textify, (<+>), rawInline)
 import Text.Pandoc.Shared (POptions(..))
 import Text.Blaze
+import Data.Sequence (ViewR(..), viewr, (|>))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Data.Foldable as F
@@ -34,10 +35,13 @@ docToHtml opts bs =
     where goHtml = do body <- blocksToHtml bs
                       notes <- reverse . wNotes <$> get
                       spacer <- nl
-                      let fnblock = H.ol ! A.id "footnotes"
-                                        $  spacer
-                                        <> mconcat (intersperse spacer notes)
-                                        <> spacer
+                      let fnblock = H.div ! A.class_ "footnotes"
+                                          $ H.hr <>
+                                            (H.ol ! A.class_ "footnotes"
+                                            $  spacer
+                                            <> mconcat
+                                                (intersperse spacer notes)
+                                            <> spacer)
                       return $ body <> if null notes
                                           then mempty
                                           else fnblock
@@ -102,16 +106,29 @@ inlineToHtml (Quoted DoubleQuoted ils) = do
   xs <- inlinesToHtml ils
   return $ "\8220" <> xs <> "\8221"
 inlineToHtml (Note _key bs) = do
-  contents <- blocksToHtml bs
   notes <- wNotes <$> get
   let nextnum = show $ length notes + 1
   let refid = "fnref" ++ nextnum
   let noteid = "fn" ++ nextnum
-  let marker = H.sup $ toHtml nextnum
+  contents <- blocksToHtml $ addBacklink refid bs
+  let marker = H.sup
+             $ H.a ! A.id (toValue refid)
+                   ! A.href (toValue $ '#':noteid)
+                   ! A.class_ "footnoteRef"
+                   $ toHtml nextnum
   let fn = H.li ! A.id (toValue noteid)
                 ! A.href (toValue $ '#':refid)
                 ! A.class_ "footnote"
                 $ contents
   modify $ \st -> st{ wNotes = fn : notes }
-  return $ marker ! A.id (toValue refid)
-                  ! A.href (toValue $ '#':noteid)
+  return marker
+
+addBacklink :: String -> Blocks -> Blocks
+addBacklink refid (Blocks bs) =
+  let back = rawInline (Format "html")
+           $ "<a href=\"" <> T.pack ('#':refid) <> "\" class=\"footnoteBackLink\" title=\"Back to text\">&#8617;</a>"
+  in Blocks $
+     case viewr bs of
+       xs :> (Para ils)  -> xs |> Para  (ils <+> back)
+       xs :> (Plain ils) -> xs |> Plain (ils <+> back)
+       _                 -> bs |> Plain back

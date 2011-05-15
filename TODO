@@ -1,6 +1,8 @@
+Too much exposure of the Seq inside Blocks, Inlines.
+
 TODO:
 Markdown syntax extensions:
-_ reference notes parser
+x reference notes parser
 _ fenced code blocks
 _ fancy list numbers
 _ definition lists
