@@ -1,8 +1,21 @@
-Smart:
+TODO:
+Markdown syntax extensions:
+_ reference notes parser
+_ fenced code blocks
+_ fancy list numbers
+_ definition lists
+_ tex math
+_ inline tex?
+_ non-strict treatment of html
+_ tables! (rethink here? use org-mode tables?)
+_ header identifiers -- or something better?
+_ example lists
+_ title block/metadata - rethink?
+_ strikeout? super/subscript?
+_ picture captions? - improve
+_ citations
 
-- add Quoted type to Inlines
-- we don't need Apostrophe or Ellipses, just use the unicode characters
-  and escape appropriately in writers
-- add parser for quoted
-- add parser for ellipses
+Other writers
+Other readers
+Templates
 
