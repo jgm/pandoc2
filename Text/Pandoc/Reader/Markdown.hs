@@ -6,8 +6,6 @@ import Text.Pandoc.Shared
 import Text.Pandoc.Parsing
 import Text.Pandoc.Builder
 import Text.Pandoc.Refs (resolveRefs)
-import qualified Data.Sequence as Seq
-import Data.Sequence (viewl, ViewL(..))
 import Data.Monoid
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -296,20 +294,16 @@ pListItem start = try $ do
   start
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ sps *> listStart) $ do
-      Blocks bs <- mconcat
-                <$> (pBlock `sepBy` (pNewlines *> notFollowedBy spnl))
-                   <|> return mempty
+      bs <- mconcat
+            <$> (pBlock `sepBy` (pNewlines *> notFollowedBy spnl))
+                <|> return mempty
       if n > 1
-         then return (False, Blocks bs)   -- not a tight list
-         else case viewl bs of
-                   EmptyL          -> return (True, Blocks bs)
-                   (Para _ :< sq) ->
-                        case viewl sq of
-                              EmptyL               -> return (True, Blocks bs)
-                              (List _ _ :< s)
-                                 |  Seq.null s     -> return (True, Blocks bs)
-                              _                    ->  return (False, Blocks bs)
-                   _                -> return (False, Blocks bs)
+         then return (False, bs)   -- not a tight list
+         else case toItems bs of
+                   []                  -> return (True, bs)
+                   [Para _]            -> return (True, bs)
+                   [Para _, List _ _ ] -> return (True, bs)
+                   _                   -> return (False, bs)
 
 listStart :: PMonad m => P m Tok
 listStart = bullet <|> enum
