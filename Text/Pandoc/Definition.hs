@@ -2,13 +2,14 @@
    MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
 module Text.Pandoc.Definition
 where
-import Data.Sequence hiding (null)
+import qualified Data.Sequence as Seq
+import Data.Sequence (Seq, viewr, ViewR(..), (|>), ViewL(..), viewl)
 import Data.Monoid
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Data
 import Data.List (intersperse)
-import Data.Foldable (toList)
+import qualified Data.Foldable as F
 import Data.String
 import Data.Generics.Uniplate.Data
 
@@ -86,10 +87,10 @@ newtype Inlines = Inlines { unInlines :: Seq Inline }
 
 -- We show an Inlines just like [Inline].
 instance Show Inlines where
-  show = show . toList . unInlines
+  show = show . F.toList . unInlines
 
 instance Read Inlines where
-  readsPrec n = map (\(x,y) -> (Inlines . fromList $ x, y)) . readsPrec n
+  readsPrec n = map (\(x,y) -> (Inlines . Seq.fromList $ x, y)) . readsPrec n
 
 instance Monoid Inlines where
   mempty = Inlines mempty
@@ -107,16 +108,30 @@ instance Monoid Inlines where
                           _                  -> xs' |> x |> y
 
 instance IsString Inlines where
-  fromString = Inlines . fromList . intersperse Sp . map Txt . T.words . T.pack
+  fromString = Inlines . Seq.fromList . intersperse Sp . map Txt . T.words . T.pack
 
 newtype Blocks = Blocks { unBlocks :: Seq Block }
                 deriving (Data, Ord, Eq, Typeable, Monoid)
 
 -- We show a Blocks just like [Block].
 instance Show Blocks where
-  show = show . toList . unBlocks
+  show = show . F.toList . unBlocks
 
 instance Read Blocks where
-  readsPrec n = map (\(x,y) -> (Blocks . fromList $ x, y)) . readsPrec n
+  readsPrec n = map (\(x,y) -> (Blocks . Seq.fromList $ x, y)) . readsPrec n
 
+class Listable a b where
+  toItems   :: a   -> [b]
+  fromItems :: [b] -> a
+  mapItems  :: (b -> a) -> a -> a
+
+instance Listable Inlines Inline where
+  toItems    = F.toList . unInlines
+  fromItems  = Inlines . Seq.fromList
+  mapItems f = F.foldMap f . unInlines
+
+instance Listable Blocks Block where
+  toItems   = F.toList . unBlocks
+  fromItems = Blocks . Seq.fromList
+  mapItems f = F.foldMap f . unBlocks
 
