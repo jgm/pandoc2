@@ -243,25 +243,25 @@ pstate = PState { sOptions      = poptions
 
 type P m a = ParsecT [Tok] (PState m) m a
 
-data PR a = Stable a | Variable (PReferences -> a)
+data PR a = Const a | Future (PReferences -> a)
 
 instance Monoid a => Monoid (PR a) where
-  mempty                            = Stable mempty
-  mappend (Stable x)   (Stable y)   = Stable (mappend x y)
-  mappend (Stable x)   (Variable y) = Variable (\s -> mappend x (y s))
-  mappend (Variable x) (Stable y)   = Variable (\s -> mappend (x s) y)
-  mappend (Variable x) (Variable y) = Variable (\s -> mappend (x s) (y s))
+  mempty                        = Const mempty
+  mappend (Const x)  (Const y)  = Const (mappend x y)
+  mappend (Const x)  (Future y) = Future (\s -> mappend x (y s))
+  mappend (Future x) (Const y)  = Future (\s -> mappend (x s) y)
+  mappend (Future x) (Future y) = Future (\s -> mappend (x s) (y s))
 
 liftResult :: (a -> b) -> PR a -> PR b
-liftResult f (Stable x)   = Stable (f x)
-liftResult f (Variable g) = Variable (f . g)
+liftResult f (Const x)  = Const (f x)
+liftResult f (Future g) = Future (f . g)
 
 (<$$>) :: Monad m => (a -> b) -> m (PR a) -> m (PR b)
 (<$$>) = liftM . liftResult
 
 finalResult :: PMonad m => PR a -> P m a
-finalResult (Stable x)   = return x
-finalResult (Variable f) = f <$> sReferences <$> getState
+finalResult (Const x)   = return x
+finalResult (Future f) = f <$> sReferences <$> getState
 
 -- | Retrieve parser option.
 getOption :: PMonad m => (POptions -> a) -> P m a
@@ -354,7 +354,7 @@ pNewline = try $ spnl *> pBlockSep
 pEndline :: PMonad m => P m (PR Inlines)
 pEndline = try $
   newline *> (getState >>= sequenceA . sEndline) *> sps *>
-  lookAhead nonNewline *> return (Stable $ single Sp)
+  lookAhead nonNewline *> return (Const $ single Sp)
 
 -- | Parses line-ending spaces, if present, and optionally
 -- an endline followed by any spaces at the beginning of

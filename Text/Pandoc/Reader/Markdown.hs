@@ -90,9 +90,9 @@ pEmDash = -- we've already parsed one '-'
 -}
 
 pSp :: PMonad m => P m (PR Inlines)
-pSp = space *> option (Stable $ single Sp)
+pSp = space *> option (Const $ single Sp)
         (skipMany1 space *>
-          option (Stable $ single Sp) ((Stable lineBreak) <$ pEndline))
+          option (Const $ single Sp) ((Const lineBreak) <$ pEndline))
 
 pWord :: PMonad m => P m (PR Inlines)
 pWord = do
@@ -105,7 +105,7 @@ pWord = do
            <|> (try $ sym '_' <* lookAhead chunk)
            <|> apos
   xs <- many chunk
-  return $ Stable $ txt $ toksToText (x:xs)
+  return $ Const $ txt $ toksToText (x:xs)
 
 {-
 pAutolink :: PMonad m => P m Inlines
@@ -199,9 +199,9 @@ pQuoted = try $ do
   getOption optSmart >>= guard
   SYM c <- satisfyTok isSymTok <|> SYM <$> pEntityChar
   case c of
-       '\'' -> option (Stable $ ch '\8217') $
+       '\'' -> option (Const $ ch '\8217') $
                  pQuotedWith SingleQuoted pInline
-       '"'  -> option (Stable $ txt "\"") $
+       '"'  -> option (Const $ txt "\"") $
                  pQuotedWith DoubleQuoted pInline
        _    -> mzero
 
