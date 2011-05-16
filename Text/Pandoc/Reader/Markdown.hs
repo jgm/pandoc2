@@ -24,35 +24,33 @@ pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof
 -- Inline parsers
 
 pInline :: PMonad m => P m (PR Inlines)
-pInline = choice [ pWord, pSp, pEndline, pQuoted ]
---pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
---            pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
---            pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
+pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
+            pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
+            pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
 
 pInlines :: PMonad m => P m (PR Inlines)
 pInlines = trimInlines <$$> mconcat <$> many1 pInline
 
-{-
-pInlinesBetween :: (Show b, PMonad m) => P m a -> P m b -> P m Inlines
+pInlinesBetween :: (Show b, PMonad m) => P m a -> P m b -> P m (PR Inlines)
 pInlinesBetween start end = mconcat <$> try (start *> many1Till inner end)
   where inner      =  innerSpace <|> (notFollowedBy' pSp *> pInline)
         innerSpace = try $ pSp <* notFollowedBy' end
 
-pVerbatim :: PMonad m => P m Inlines
+pVerbatim :: PMonad m => P m (PR Inlines)
 pVerbatim = try $ do
   let backtick = sym '`'
   numticks <- length <$> many1 backtick
   sps
   let end = try $ sps *> count numticks backtick *> notFollowedBy backtick
-  verbatim . toksToVerbatim
-    <$> manyTill (nonNewline <|> (SPACE <$ pEndline)) end
+  Const . verbatim . toksToVerbatim <$>
+     manyTill (nonNewline <|> (SPACE <$ pEndline)) end
 
-pEscaped :: PMonad m => P m Inlines
+pEscaped :: PMonad m => P m (PR Inlines)
 pEscaped = try $ do
   sym '\\'
   strict <- getOption optStrict
   SYM c <- satisfyTok (if strict then isEscapable else isSymTok)
-  return $ ch c
+  return $ Const $ ch c
 
 isEscapable :: Tok -> Bool
 isEscapable (SYM c) =
@@ -62,11 +60,12 @@ isEscapable (SYM c) =
   c == '+'  || c == '-' || c == '!' || c == '.'
 isEscapable _ = False
 
-pSym :: PMonad m => P m Inlines
+pSym :: PMonad m => P m (PR Inlines)
 pSym = do
   smart <- getOption optSmart
   SYM c <- satisfyTok isSymTok
-  case c of
+  Const <$>
+    case c of
        '.' | smart -> option (ch '.') pEllipses
        '-' | smart -> option (ch '-') (pEnDash <|> pEmDash)
        _           -> return (ch c)
@@ -87,8 +86,6 @@ pEmDash :: PMonad m => P m Inlines
 pEmDash = -- we've already parsed one '-'
   ch '\8212' <$ (sym '-' *> optional (sym '-'))
 
--}
-
 pSp :: PMonad m => P m (PR Inlines)
 pSp = space *> option (Const $ single Sp)
         (skipMany1 space *>
@@ -107,9 +104,8 @@ pWord = do
   xs <- many chunk
   return $ Const $ txt $ toksToText (x:xs)
 
-{-
-pAutolink :: PMonad m => P m Inlines
-pAutolink = (mkLink <$> pUri) <|> (mkEmail <$> pEmail)
+pAutolink :: PMonad m => P m (PR Inlines)
+pAutolink = (Const . mkLink <$> pUri) <|> (Const . mkEmail <$> pEmail)
   where mkLink u  = link (txt u) Source{ location = escapeURI u, title = "" }
         mkEmail u = link (txt u) Source{ location = escapeURI ("mailto:" <> u),
                                           title = "" }
@@ -130,35 +126,42 @@ pUri = try $ do
   ys <- textTill nonNewline (sym '>')
   return $ xs <> ":" <> ys
 
-pBracketedInlines :: PMonad m => P m Inlines
+pBracketedInlines :: PMonad m => P m (PR Inlines)
 pBracketedInlines = try $
-  sym '[' *> (toInlines <$> manyTill pInline (sym ']'))
+  sym '[' *> (trimInlines <$$> mconcat <$> manyTill pInline (sym ']'))
 
-pImage :: PMonad m => P m Inlines
+pImage :: PMonad m => P m (PR Inlines)
 pImage = try $ do
   sym '!'
-  [Link lab x] <- toItems <$> pLink
-  return $ single $ Image lab x
+  res <- pLink
+  return $ Future $ \s ->
+    mapItems linkToImage $ evalResult s res
+      where linkToImage (Link l s) = single (Image l s)
+            linkToImage (Txt t)    = single (Txt $ "!" <> t)
+            linkToImage x          = single x
 
-pLink :: PMonad m => P m Inlines
+pLink :: PMonad m => P m (PR Inlines)
 pLink = try $ do
   ils <- pBracketedInlines
-  guard $ ils /= mempty
-  let lab = Label $ delink ils
-  let ref = Ref{ key = Key ils, fallback = "[" <> ils <> "]" }
-  pExplicitLink lab <|> pReferenceLink lab ref
+  pExplicitLink ils <|> pReferenceLink ils
 
-pReferenceLink :: PMonad m => Label -> Source -> P m Inlines
-pReferenceLink lab ref = try $ do
-  ref' <- option ref $ try $ do
-              s <- option mempty $ (pEndline <|> pSp)
-              ils <- pBracketedInlines
-              let k' = if ils == mempty then key ref else Key ils
-              let f' = fallback ref <> s <> "[" <> ils <> "]"
-              return $ Ref{ key = k', fallback = f' }
-  return $ single $ Link lab ref'
+pReferenceLink :: PMonad m => PR Inlines -> P m (PR Inlines)
+pReferenceLink lab = try $ do
+  (ref, fallback) <-
+    option (lab, "[" <> lab <> "]") $ try $ do
+      s <- option mempty $ (pEndline <|> pSp)
+      ils <- pBracketedInlines
+      let f = "[" <> lab <> "]" <> s <> "[" <> ils <> "]"
+      let ils' = case ils of
+                      Const x | x == mempty -> lab
+                      _                     -> ils
+      return (ils', f)
+  return $ Future $ \s ->
+    case M.lookup (Key $ evalResult nullReferences ref) (rLinks s) of
+         Nothing  -> evalResult s fallback
+         Just src -> link (delink $ evalResult s lab) src
 
-pExplicitLink :: PMonad m => Label -> P m Inlines
+pExplicitLink :: PMonad m => PR Inlines -> P m (PR Inlines)
 pExplicitLink lab = try $ do
   sym '('
   sps
@@ -166,7 +169,9 @@ pExplicitLink lab = try $ do
   tit <- option "" $ try $ spOptNl *> pTitle
   sps
   sym ')'
-  return $ single $ Link lab Source{ location = escapeURI src, title = tit }
+  return $ Future $ \s ->
+             link (delink $ evalResult s lab)
+               Source{ location = escapeURI src, title = tit }
 
 pSource :: PMonad m => P m Text
 pSource = angleSource <|> regSource
@@ -192,8 +197,6 @@ pTitle = do
   let end = try $ satisfyTok (== c) *> lookAhead (sps *> sym ')')
   textTill anyTok end
 
--}
-
 pQuoted :: PMonad m => P m (PR Inlines)
 pQuoted = try $ do
   getOption optSmart >>= guard
@@ -205,53 +208,54 @@ pQuoted = try $ do
                  pQuotedWith DoubleQuoted pInline
        _    -> mzero
 
-{-
-pFours :: PMonad m => P m Inlines
+pFours :: PMonad m => P m (PR Inlines)
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   x <- sym '*' <|> sym '_'
   count 2 $ satisfyTok (== x)
   rest <- many1 (satisfyTok (== x))
-  return $ txt $ toksToText (x : x : x : rest)
+  return $ Const $ txt $ toksToText (x : x : x : rest)
 
-pEmph :: PMonad m => P m Inlines
-pEmph = emph <$>
+pEmph :: PMonad m => P m (PR Inlines)
+pEmph = emph <$$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
     where starStart = sym '*' *> lookAhead nonSpace
           starEnd   = notFollowedBy' pStrong *> sym '*'
           ulStart   = sym '_' *> lookAhead nonSpace
           ulEnd     = notFollowedBy' pStrong *> sym '_'
 
-pStrong :: PMonad m => P m Inlines
-pStrong = strong <$>
+pStrong :: PMonad m => P m (PR Inlines)
+pStrong = strong <$$>
   (pInlinesBetween starStart starEnd <|> pInlinesBetween ulStart ulEnd)
     where starStart = count 2 (sym '*') *> lookAhead nonSpace
           starEnd   = try (count 2 (sym '*'))
           ulStart   = count 2 (sym '_') *> lookAhead nonSpace
           ulEnd     = try (count 2 (sym '_'))
 
-pInlineNote :: PMonad m => P m Inlines
-pInlineNote = note . para
-  <$> (unlessStrict *> try (sym '^' *> pBracketedInlines))
-
-pNoteRef :: PMonad m => P m Inlines
+pNoteRef :: PMonad m => P m (PR Inlines)
 pNoteRef = do
   k <- pNoteMarker
-  return $ single $ Note (Key k) mempty
+  return $ Future $ \refs ->
+    case M.lookup k (rNotes refs) of
+          Just (Const bs) -> note bs
+          Just (Future f) -> note $ f refs
+          Nothing         -> txt k
 
-pNoteMarker :: PMonad m => P m Inlines
+pNoteMarker :: PMonad m => P m Text
 pNoteMarker = try $ do
   sym '[' *> sym '^'
   x <- text1Till nonSpace (sym ']')
   -- the key is also the fallback, so we wrap in [^...]
-  return $ txt $ "[^" <> x <> "]"
+  return $ "[^" <> x <> "]"
 
--}
+pInlineNote :: PMonad m => P m (PR Inlines)
+pInlineNote = note . para
+  <$$> (unlessStrict *> try (sym '^' *> pBracketedInlines))
+
 -- Block parsers
 
 pBlock :: PMonad m => P m (PR Blocks)
-pBlock = choice [ pPara ]
---pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
---                 pHeader, pHtmlBlock, pPara]
+pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
+                 pHeader, pHtmlBlock, pPara]
 
 pBlocks :: PMonad m => P m (PR Blocks)
 pBlocks = option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
@@ -259,47 +263,47 @@ pBlocks = option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
 pPara :: PMonad m => P m (PR Blocks)
 pPara = para <$$> pInlines
 
-{-
-pQuote :: PMonad m => P m Blocks
+pQuote :: PMonad m => P m (PR Blocks)
 pQuote = try $ do
   let start = try $ nonindentSpace *> sym '>' *> optional space
   start
-  xs <- withBlockSep start $ withEndline (optional start) pBlocks
-  return $ quote xs
+  quote <$$> withBlockSep start (withEndline (optional start) pBlocks)
 
-pHeader :: PMonad m => P m Blocks
+pHeader :: PMonad m => P m (PR Blocks)
 pHeader = pHeaderSetext <|> pHeaderATX
 
 setextChar :: PMonad m => P m Tok
 setextChar = sym '=' <|> sym '-'
 
-pHeaderSetext :: PMonad m => P m Blocks
+pHeaderSetext :: PMonad m => P m (PR Blocks)
 pHeaderSetext = try $ do
   -- lookahead to speed up parsing
   lookAhead $ skipMany nonNewline *> pNewline *> setextChar
-  ils <- toInlines <$> many1Till pInline pNewline
+  ils <- trimInlines <$$> mconcat <$> many1Till pInline pNewline
   c <- setextChar
   skipMany (satisfyTok (== c))
   eol
   let level = if c == SYM '=' then 1 else 2
-  return $ header level ils
+  header level <$$> return ils
 
-pHeaderATX :: PMonad m => P m Blocks
+pHeaderATX :: PMonad m => P m (PR Blocks)
 pHeaderATX = try $ do
   level <- length <$> many1 (sym '#')
   sps
   let closeATX = try $ skipMany (sym '#') *> eol
-  header level <$> toInlines <$> many1Till pInline closeATX
+  header level . trimInlines <$$> mconcat <$> many1Till pInline closeATX
 
-pList :: PMonad m => P m Blocks
+pList :: PMonad m => P m (PR Blocks)
 pList = do
   (mark, style) <- lookAhead
                  $ ((enum, Ordered) <$ enum) <|> ((bullet, Bullet) <$ bullet)
   (tights, bs) <- unzip <$> many1 (pListItem mark)
-  return $ single $ List ListAttr{ listTight = and tights, listStyle = style } bs
+  return $ Future $ \s ->
+    single $ List ListAttr{ listTight = and tights, listStyle = style }
+           $ map (evalResult s) bs
 
 pListItem :: PMonad m
-          => P m a -> P m (Bool, Blocks) -- True = suitable for tight list
+          => P m a -> P m (Bool, PR Blocks) -- True = suitable for tight list
 pListItem start = try $ do
   n <- option 0 pNewlines
   start
@@ -310,7 +314,7 @@ pListItem start = try $ do
                 <|> return mempty
       if n > 1
          then return (False, bs)   -- not a tight list
-         else case toItems bs of
+         else case toItems (evalResult nullReferences bs) of
                    []                  -> return (True, bs)
                    [Para _]            -> return (True, bs)
                    [Para _, List _ _ ] -> return (True, bs)
@@ -351,34 +355,36 @@ enum = try $ do
      _         -> return []
   return $ SYM '#'
 
-pCode :: PMonad m => P m Blocks
+pCode :: PMonad m => P m (PR Blocks)
 pCode  = try $ do
   x <- indentSpace *> verbLine
   xs <- option []
         $ try $ pNewline *> sepBy ((indentSpace <|> eol) *> verbLine) pNewline
-  return $ code $ T.unlines $ Prelude.reverse $ dropWhile T.null
-         $ reverse (x:xs)
+  return $ Const $ code
+         $ T.unlines $ Prelude.reverse $ dropWhile T.null $ reverse (x:xs)
 
-pHrule :: PMonad m => P m Blocks
+pHrule :: PMonad m => P m (PR Blocks)
 pHrule = try $ do
   sps
   c <- sym '*' <|> sym '-' <|> sym '_'
   count 2 $ sps *> satisfyTok (== c)
   skipMany $ sps *> satisfyTok (== c)
   eol
-  return hrule
+  return $ Const hrule
 
-pReference :: PMonad m => P m Blocks
+pReference :: PMonad m => P m (PR Blocks)
 pReference = try $ do
   nonindentSpace
-  k <- Key <$> pBracketedInlines
+  k <- pBracketedInlines
   sym ':'
   spOptNl
   loc <- pSource
   tit <- option "" $ try $ spOptNl *> pRefTitle
   eol
   let src = Source{ location = escapeURI loc, title = tit }
-  modifyState $ \st -> st{ sReferences = M.insert k src $ sReferences st }
+  refs <- getReferences
+  let key = Key $ evalResult nullReferences k
+  setReferences refs{ rLinks = M.insert key src $ rLinks refs }
   return mempty
 
 pRefTitle :: PMonad m => P m Text
@@ -388,24 +394,25 @@ pRefTitle =  pRefTitleWith '\'' '\''
   where pRefTitleWith start end = sym start *>
           textTill nonNewline (try $ sym end *> eol)
 
-pNote :: PMonad m => P m Blocks
+pNote :: PMonad m => P m (PR Blocks)
 pNote = try $ do
   nonindentSpace
   k <- pNoteMarker
   sym ':'
   bs <- withBlockSep (indentSpace <|> eol) $ do
           mconcat <$> (pBlock `sepBy` (pNewlines *> notFollowedBy spnl))
-  modifyState $ \st -> st{ sNotes = M.insert (Key k) bs $ sNotes st }
+  refs <- getReferences
+  setReferences refs{ rNotes = M.insert k bs $ rNotes refs }
   return mempty
 
 -- HTML related parsers
 
-pHtmlInline :: PMonad m => P m Inlines
-pHtmlInline = rawInline (Format "html")
+pHtmlInline :: PMonad m => P m (PR Inlines)
+pHtmlInline = Const . rawInline (Format "html")
            <$> (pHtmlComment <|> snd <$> pHtmlTag)
 
-pHtmlBlock :: PMonad m => P m Blocks
-pHtmlBlock = rawBlock (Format "html")
+pHtmlBlock :: PMonad m => P m (PR Blocks)
+pHtmlBlock = Const . rawBlock (Format "html")
           <$> (pHtmlComment <|> pHtmlBlockRaw)
 
 pHtmlComment :: PMonad m => P m Text
@@ -470,9 +477,8 @@ blockTags = [ "address", "blockquote", "center", "del", "dir", "div",
               "frameset", "li", "tbody", "td", "tfoot", "th",
               "thead", "tr", "script" ]
 
-pEntity :: PMonad m => P m Inlines
-pEntity = ch <$> pEntityChar
+pEntity :: PMonad m => P m (PR Inlines)
+pEntity = Const . ch <$> pEntityChar
 
 unlessStrict :: PMonad m => P m ()
 unlessStrict = getOption optStrict >>= guard . not
--}

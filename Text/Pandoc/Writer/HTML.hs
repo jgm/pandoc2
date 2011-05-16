@@ -83,14 +83,10 @@ inlineToHtml (Txt x) = return $ toHtml x
 inlineToHtml Sp      = return $ toHtml (" " :: L.Text)
 inlineToHtml (Emph ils) = H.em <$> inlinesToHtml ils
 inlineToHtml (Strong ils) = H.strong <$> inlinesToHtml ils
-inlineToHtml (Link _ Ref{}) =
-  error "Encountered Ref link!  Please report bug to pandoc maintainers."
 inlineToHtml (Link (Label lab) src@Source{}) = do
   let tit = title src
   x <- (H.a ! A.href (toValue $ location src)) <$> inlinesToHtml lab
   return $ if T.null tit then x else x ! A.title (toValue $ title src)
-inlineToHtml (Image _ Ref{}) =
-  error "Encountered Ref image!  Please report bug to pandoc maintainers."
 inlineToHtml (Image (Label lab) src@Source{}) = return $
   H.img ! A.src (toValue $ location src) ! A.title (toValue $ title src)
         ! A.alt (toValue $ textify lab)
@@ -104,7 +100,7 @@ inlineToHtml (Quoted SingleQuoted ils) = do
 inlineToHtml (Quoted DoubleQuoted ils) = do
   xs <- inlinesToHtml ils
   return $ "\8220" <> xs <> "\8221"
-inlineToHtml (Note _key bs) = do
+inlineToHtml (Note bs) = do
   notes <- wNotes <$> get
   let nextnum = show $ length notes + 1
   let refid = "fnref" ++ nextnum

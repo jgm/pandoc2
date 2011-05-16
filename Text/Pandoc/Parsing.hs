@@ -6,6 +6,7 @@ import Text.Pandoc.Definition
 import Text.Pandoc.Shared
 import Data.Traversable (sequenceA)
 import Data.Char (isLetter, isAlphaNum)
+import Data.String
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad
@@ -227,8 +228,12 @@ data PMonad m => PState m =
 
 data PReferences =
   PReferences { rLinks      :: M.Map Key Source
-              , rNotes      :: M.Map Key Blocks
+              , rNotes      :: M.Map Text (PR Blocks)
               }
+
+nullReferences :: PReferences
+nullReferences = PReferences { rLinks = M.empty
+                             , rNotes = M.empty }
 
 -- | Default parser state.
 pstate :: PMonad m => PState m
@@ -236,14 +241,22 @@ pstate = PState { sOptions      = poptions
                 , sIncludes     = []
                 , sEndline      = Seq.empty
                 , sBlockSep     = Seq.empty
-                , sReferences   = PReferences { rLinks = M.empty
-                                              , rNotes = M.empty }
+                , sReferences   = nullReferences
                 , sQuoteContext = Nothing
                 }
+
+getReferences :: PMonad m => P m PReferences
+getReferences = sReferences <$> getState
+
+setReferences :: PMonad m => PReferences -> P m ()
+setReferences refs = modifyState $ \st -> st{ sReferences = refs }
 
 type P m a = ParsecT [Tok] (PState m) m a
 
 data PR a = Const a | Future (PReferences -> a)
+
+instance Show (PR a) where
+  show _ = "<PR value>"  -- Show needs to be defined for notFollowedBy'
 
 instance Monoid a => Monoid (PR a) where
   mempty                        = Const mempty
@@ -252,12 +265,20 @@ instance Monoid a => Monoid (PR a) where
   mappend (Future x) (Const y)  = Future (\s -> mappend (x s) y)
   mappend (Future x) (Future y) = Future (\s -> mappend (x s) (y s))
 
+instance IsString (PR Inlines) where
+  fromString = Const . fromString
+
 liftResult :: (a -> b) -> PR a -> PR b
 liftResult f (Const x)  = Const (f x)
 liftResult f (Future g) = Future (f . g)
 
+infix 3 <$$>
 (<$$>) :: Monad m => (a -> b) -> m (PR a) -> m (PR b)
 (<$$>) = liftM . liftResult
+
+evalResult :: PReferences -> PR a -> a
+evalResult _    (Const x)  = x
+evalResult refs (Future f) = f refs
 
 finalResult :: PMonad m => PR a -> P m a
 finalResult (Const x)   = return x
