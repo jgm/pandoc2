@@ -49,8 +49,7 @@ Some differences from pandoc 1
 * The old markdown parser made two passes--one to get a list of
   references, and then again to parse the document, using this
   list of references.  The new parser makes just one pass,
-  and uses generics (from uniplate rather than syb, for speed)
-  to walk the AST and fill in the refereces at the end.
+  and fills in the references at the end.
 
 * The old parser handled embedded blocks (block quotations,
   sublists) by first parsing out a "raw" chunk of text (omitting
@@ -73,7 +72,9 @@ The code is cleaner and shorter.
 
 Performance is significantly faster than pandoc, even with the `--strict`
 flag. `resolveRefs` was made much faster by hand-coding it instead of
-using generics.
+using generics. A further improvement was gained by removing `resolveRefs`
+entirely, and having the parsers return functions from references to
+values, which are then run at the end of parsing.
 
 To run the Markdown test suite, do `make test`. To run the PHP Markdown test
 suite, do `make phptests`. Several of the PHP tests fail, but in many of these
