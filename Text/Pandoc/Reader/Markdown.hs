@@ -24,7 +24,7 @@ pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof
 -- Inline parsers
 
 pInline :: PMonad m => P m (PR Inlines)
-pInline = choice [ pWord, pSp ]
+pInline = choice [ pWord, pSp, pEndline, pQuoted ]
 --pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
 --            pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
 --            pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
@@ -192,17 +192,20 @@ pTitle = do
   let end = try $ satisfyTok (== c) *> lookAhead (sps *> sym ')')
   textTill anyTok end
 
-pQuoted :: PMonad m => P m Inlines
+-}
+
+pQuoted :: PMonad m => P m (PR Inlines)
 pQuoted = try $ do
   getOption optSmart >>= guard
   SYM c <- satisfyTok isSymTok <|> SYM <$> pEntityChar
   case c of
-       '\'' -> option (ch '\8217') $
+       '\'' -> option (Stable $ ch '\8217') $
                  pQuotedWith SingleQuoted pInline
-       '"'  -> option (txt "\"") $
+       '"'  -> option (Stable $ txt "\"") $
                  pQuotedWith DoubleQuoted pInline
        _    -> mzero
 
+{-
 pFours :: PMonad m => P m Inlines
 pFours = try $ do -- four or more *s or _s, to avoid blowup parsing emph/strong
   x <- sym '*' <|> sym '_'
