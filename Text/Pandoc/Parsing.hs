@@ -221,10 +221,14 @@ data PMonad m => PState m =
          , sIncludes     :: [FilePath]
          , sEndline      :: Seq (P m ())
          , sBlockSep     :: Seq (P m ())
-         , sReferences   :: M.Map Key Source
-         , sNotes        :: M.Map Key Blocks
+         , sReferences   :: PReferences
          , sQuoteContext :: Maybe QuoteType
          }
+
+data PReferences =
+  PReferences { rLinks      :: M.Map Key Source
+              , rNotes      :: M.Map Key Blocks
+              }
 
 -- | Default parser state.
 pstate :: PMonad m => PState m
@@ -232,8 +236,8 @@ pstate = PState { sOptions      = poptions
                 , sIncludes     = []
                 , sEndline      = Seq.empty
                 , sBlockSep     = Seq.empty
-                , sReferences   = M.empty
-                , sNotes        = M.empty
+                , sReferences   = PReferences { rLinks = M.empty
+                                              , rNotes = M.empty }
                 , sQuoteContext = Nothing
                 }
 
