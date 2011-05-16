@@ -243,23 +243,23 @@ pstate = PState { sOptions      = poptions
 
 type P m a = ParsecT [Tok] (PState m) m a
 
-data PResult a = Stable a | Variable (PReferences -> a)
+data PR a = Stable a | Variable (PReferences -> a)
 
-instance Monoid a => Monoid (PResult a) where
+instance Monoid a => Monoid (PR a) where
   mempty                            = Stable mempty
   mappend (Stable x)   (Stable y)   = Stable (mappend x y)
   mappend (Stable x)   (Variable y) = Variable (\s -> mappend x (y s))
   mappend (Variable x) (Stable y)   = Variable (\s -> mappend (x s) y)
   mappend (Variable x) (Variable y) = Variable (\s -> mappend (x s) (y s))
 
-liftResult :: (a -> b) -> PResult a -> PResult b
+liftResult :: (a -> b) -> PR a -> PR b
 liftResult f (Stable x)   = Stable (f x)
 liftResult f (Variable g) = Variable (f . g)
 
-(<$$>) :: (a -> b) -> PResult a -> PResult b
+(<$$>) :: (a -> b) -> PR a -> PR b
 (<$$>) = liftResult
 
-finalResult :: PMonad m => PResult a -> P m a
+finalResult :: PMonad m => PR a -> P m a
 finalResult (Stable x)   = return x
 finalResult (Variable f) = f <$> sReferences <$> getState
 
