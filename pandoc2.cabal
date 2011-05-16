@@ -44,7 +44,6 @@ Library
                    Text.Pandoc.Shared,
                    Text.Pandoc.Reader.Markdown,
                    Text.Pandoc.Writer.HTML
-  Other-Modules:   Text.Pandoc.Refs
 
 Executable pandoc2
   Main-Is:            pandoc2.hs
