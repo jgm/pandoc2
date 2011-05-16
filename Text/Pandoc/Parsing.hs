@@ -243,6 +243,15 @@ pstate = PState { sOptions      = poptions
 
 type P m a = ParsecT [Tok] (PState m) m a
 
+data PResult a = Stable a | Variable (PReferences -> a)
+
+liftResult :: (a -> b) -> PResult a -> PResult b
+liftResult f (Stable x)   = Stable (f x)
+liftResult f (Variable g) = Variable (f . g)
+
+(<$$>) :: (a -> b) -> PResult a -> PResult b
+(<$$>) = liftResult
+
 -- | Retrieve parser option.
 getOption :: PMonad m => (POptions -> a) -> P m a
 getOption opt = opt <$> sOptions <$> getState
