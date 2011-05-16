@@ -351,10 +351,10 @@ pNewline = try $ spnl *> pBlockSep
 -- | Parse a line break within a block, including characters
 -- at the beginning of the next line that are part of the block
 -- context. Return a Space.
-pEndline :: PMonad m => P m Inlines
+pEndline :: PMonad m => P m (PR Inlines)
 pEndline = try $
   newline *> (getState >>= sequenceA . sEndline) *> sps *>
-  lookAhead nonNewline *> return (single Sp)
+  lookAhead nonNewline *> return (Stable $ single Sp)
 
 -- | Parses line-ending spaces, if present, and optionally
 -- an endline followed by any spaces at the beginning of
@@ -383,11 +383,12 @@ pEntityChar = try $ do
        _        -> mzero
 -- quote parsers
 
-pQuotedWith :: PMonad m => QuoteType -> P m Inlines -> P m Inlines
-pQuotedWith qt ins = single . Quoted qt <$>
-    (withQuoteContext qt $ toInlines <$> many1Till ins (quoteEnd qt))
+pQuotedWith :: PMonad m => QuoteType -> P m (PR Inlines) -> P m (PR Inlines)
+pQuotedWith qt ins = withQuoteContext qt $ do
+  ils <- mconcat <$> (many1Till ins (quoteEnd qt))
+  return $ (single . Quoted qt . trimInlines) <$$> ils
 
-withQuoteContext :: PMonad m => QuoteType -> P m Inlines -> P m Inlines
+withQuoteContext :: PMonad m => QuoteType -> P m (PR Inlines) -> P m (PR Inlines)
 withQuoteContext qt ins = try $ do
   oldContext <- sQuoteContext <$> getState
   modifyState $ \st -> st{ sQuoteContext = Just qt }
