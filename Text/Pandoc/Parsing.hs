@@ -245,12 +245,23 @@ type P m a = ParsecT [Tok] (PState m) m a
 
 data PResult a = Stable a | Variable (PReferences -> a)
 
+instance Monoid a => Monoid (PResult a) where
+  mempty                            = Stable mempty
+  mappend (Stable x)   (Stable y)   = Stable (mappend x y)
+  mappend (Stable x)   (Variable y) = Variable (\s -> mappend x (y s))
+  mappend (Variable x) (Stable y)   = Variable (\s -> mappend (x s) y)
+  mappend (Variable x) (Variable y) = Variable (\s -> mappend (x s) (y s))
+
 liftResult :: (a -> b) -> PResult a -> PResult b
 liftResult f (Stable x)   = Stable (f x)
 liftResult f (Variable g) = Variable (f . g)
 
 (<$$>) :: (a -> b) -> PResult a -> PResult b
 (<$$>) = liftResult
+
+finalResult :: PMonad m => PResult a -> P m a
+finalResult (Stable x)   = return x
+finalResult (Variable f) = f <$> sReferences <$> getState
 
 -- | Retrieve parser option.
 getOption :: PMonad m => (POptions -> a) -> P m a
