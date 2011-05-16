@@ -256,8 +256,8 @@ liftResult :: (a -> b) -> PR a -> PR b
 liftResult f (Stable x)   = Stable (f x)
 liftResult f (Variable g) = Variable (f . g)
 
-(<$$>) :: (a -> b) -> PR a -> PR b
-(<$$>) = liftResult
+(<$$>) :: Monad m => (a -> b) -> m (PR a) -> m (PR b)
+(<$$>) = liftM . liftResult
 
 finalResult :: PMonad m => PR a -> P m a
 finalResult (Stable x)   = return x
@@ -384,9 +384,8 @@ pEntityChar = try $ do
 -- quote parsers
 
 pQuotedWith :: PMonad m => QuoteType -> P m (PR Inlines) -> P m (PR Inlines)
-pQuotedWith qt ins = withQuoteContext qt $ do
-  ils <- mconcat <$> (many1Till ins (quoteEnd qt))
-  return $ (single . Quoted qt . trimInlines) <$$> ils
+pQuotedWith qt ins = (single . Quoted qt . trimInlines) <$$>
+  (withQuoteContext qt $ mconcat <$> (many1Till ins (quoteEnd qt)))
 
 withQuoteContext :: PMonad m => QuoteType -> P m (PR Inlines) -> P m (PR Inlines)
 withQuoteContext qt ins = try $ do

@@ -5,7 +5,6 @@ import Text.Pandoc.Definition
 import Text.Pandoc.Shared
 import Text.Pandoc.Parsing
 import Text.Pandoc.Builder
-import Text.Pandoc.Refs (resolveRefs)
 import Data.Monoid
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -19,18 +18,21 @@ import Text.HTML.TagSoup
 -- Document-level parsers
 
 pDoc :: PMonad m => P m Blocks
-pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof >>= resolveRefs
+pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof
+    >>= finalResult
 
 -- Inline parsers
 
-pInline :: PMonad m => P m Inlines
-pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
-            pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
-            pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
+pInline :: PMonad m => P m (PR Inlines)
+pInline = choice [ pWord, pSp ]
+--pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
+--            pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
+--            pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
 
-pInlines :: PMonad m => P m Inlines
-pInlines = toInlines <$> many1 pInline
+pInlines :: PMonad m => P m (PR Inlines)
+pInlines = trimInlines <$$> mconcat <$> many1 pInline
 
+{-
 pInlinesBetween :: (Show b, PMonad m) => P m a -> P m b -> P m Inlines
 pInlinesBetween start end = mconcat <$> try (start *> many1Till inner end)
   where inner      =  innerSpace <|> (notFollowedBy' pSp *> pInline)
@@ -85,11 +87,14 @@ pEmDash :: PMonad m => P m Inlines
 pEmDash = -- we've already parsed one '-'
   ch '\8212' <$ (sym '-' *> optional (sym '-'))
 
-pSp :: PMonad m => P m Inlines
-pSp = space *> option (single Sp)
-        (skipMany1 space *> option (single Sp) (lineBreak <$ pEndline))
+-}
 
-pWord :: PMonad m => P m Inlines
+pSp :: PMonad m => P m (PR Inlines)
+pSp = space *> option (Stable $ single Sp)
+        (skipMany1 space *>
+          option (Stable $ single Sp) ((Stable lineBreak) <$ pEndline))
+
+pWord :: PMonad m => P m (PR Inlines)
 pWord = do
   x <- wordTok
   smart <- getOption optSmart
@@ -100,8 +105,9 @@ pWord = do
            <|> (try $ sym '_' <* lookAhead chunk)
            <|> apos
   xs <- many chunk
-  return $ txt $ toksToText (x:xs)
+  return $ Stable $ txt $ toksToText (x:xs)
 
+{-
 pAutolink :: PMonad m => P m Inlines
 pAutolink = (mkLink <$> pUri) <|> (mkEmail <$> pEmail)
   where mkLink u  = link (txt u) Source{ location = escapeURI u, title = "" }
@@ -236,18 +242,21 @@ pNoteMarker = try $ do
   -- the key is also the fallback, so we wrap in [^...]
   return $ txt $ "[^" <> x <> "]"
 
+-}
 -- Block parsers
 
-pBlock :: PMonad m => P m Blocks
-pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
-                 pHeader, pHtmlBlock, pPara]
+pBlock :: PMonad m => P m (PR Blocks)
+pBlock = choice [ pPara ]
+--pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
+--                 pHeader, pHtmlBlock, pPara]
 
-pBlocks :: PMonad m => P m Blocks
+pBlocks :: PMonad m => P m (PR Blocks)
 pBlocks = option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
 
-pPara :: PMonad m => P m Blocks
-pPara = para <$> pInlines
+pPara :: PMonad m => P m (PR Blocks)
+pPara = para <$$> pInlines
 
+{-
 pQuote :: PMonad m => P m Blocks
 pQuote = try $ do
   let start = try $ nonindentSpace *> sym '>' *> optional space
@@ -463,3 +472,4 @@ pEntity = ch <$> pEntityChar
 
 unlessStrict :: PMonad m => P m ()
 unlessStrict = getOption optStrict >>= guard . not
+-}
