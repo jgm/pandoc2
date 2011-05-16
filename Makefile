@@ -1,10 +1,7 @@
 .PHONY: all opt test clean prof all markdowntests phptests
 
 all:
-	cabal install -ffastcompile
-
-opt:
-	cabal install -f-fastcompile
+	cabal install
 
 prof:
 	cabal install --enable-library-profiling --enable-executable-profiling
