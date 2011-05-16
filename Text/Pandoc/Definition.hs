@@ -51,7 +51,7 @@ data Inline = Txt Text
             | Quoted QuoteType Inlines
             | LineBreak
             | RawInline Format Text
-            | Note Key Blocks
+            | Note Blocks
             deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 data QuoteType = SingleQuoted | DoubleQuoted
@@ -61,7 +61,6 @@ newtype Label = Label Inlines
               deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 data Source = Source { location :: Text, title :: Text }
-            | Ref { key :: Key, fallback :: Inlines }
             deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 newtype Format = Format Text

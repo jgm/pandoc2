@@ -48,7 +48,7 @@ rawInline :: Format -> Text -> Inlines
 rawInline f = single . RawInline f
 
 note :: Blocks -> Inlines
-note = single . Note (Key "")
+note = single . Note
 
 para :: Inlines -> Blocks
 para = single . Para

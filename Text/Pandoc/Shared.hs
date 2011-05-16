@@ -48,8 +48,7 @@ toInlines = trimInlines . mconcat
 -- | Remove links from 'Inlines'.
 delink :: Inlines -> Inlines
 delink = mapItems go
-  where go (Link _ (Ref { fallback = f })) = f
-        go (Link (Label lab) _)            = lab
+  where go (Link (Label lab) _)            = lab
         go x                               = single x
 
 -- | Escape a URI, converting to UTF-8 octets, then URI encoding them.
