@@ -1,14 +1,3 @@
-Avoid the need for tree-walking entirely by
-returning PBlocks and PInlines instead of
-blocks + inlines - where PBlocks is a function
-from State -> Blocks. Can define Monoid for this
-etc.
-Remove the tree-walking takes the benchmark from
-.379 to .212 - suggesting that this would yield
-a big speedup.
-This would also allow a cleaner def of Inline
-(No 'Ref').
-
 TODO:
 Markdown syntax extensions:
 x reference notes parser
