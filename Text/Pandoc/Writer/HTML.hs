@@ -91,9 +91,9 @@ inlineToHtml (Image (Label lab) src@Source{}) = return $
   H.img ! A.src (toValue $ location src) ! A.title (toValue $ title src)
         ! A.alt (toValue $ textify lab)
 inlineToHtml LineBreak = return $ H.br
-inlineToHtml (Math InlineMath t) = return $ H.span ! A.class "math"
+inlineToHtml (Math InlineMath t) = return $ H.span ! A.class_ "math"
                                           $ toHtml t
-inlineToHtml (Math DisplayMath t) = return $ H.div ! A.class "math"
+inlineToHtml (Math DisplayMath t) = return $ H.div ! A.class_ "math"
                                            $ toHtml t
 inlineToHtml (RawInline (Format "html") t) = return $ preEscapedText t
 inlineToHtml (RawInline _ _) = return $ mempty
