@@ -8,6 +8,7 @@ module Text.Pandoc.Definition
        , Label(..)
        , Source(..)
        , Format(..)
+       , MathType(..)
        , QuoteType(..)
        , ListAttr(..)
        , ListStyle(..)
@@ -50,12 +51,16 @@ data Inline = Txt Text
             | Verbatim Attr Text
             | Quoted QuoteType Inlines
             | LineBreak
+            | Math MathType Text
             | RawInline Format Text
             | Note Blocks
             deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 data QuoteType = SingleQuoted | DoubleQuoted
                deriving (Show, Read, Data, Ord, Eq, Typeable)
+
+data MathType = DisplayMath | InlineMath
+              deriving (Show, Eq, Ord, Read, Typeable, Data)
 
 newtype Label = Label Inlines
               deriving (Show, Read, Data, Ord, Eq, Typeable)

@@ -26,7 +26,7 @@ pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof
 pInline :: PMonad m => P m (PR Inlines)
 pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
             pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
-            pInlineNote, pEscaped, pEntity, pHtmlInline, pSym ]
+            pInlineNote, pEscaped, pMath, pEntity, pHtmlInline, pSym ]
 
 pInlines :: PMonad m => P m (PR Inlines)
 pInlines = trimInlines <$$> mconcat <$> many1 pInline
@@ -482,3 +482,37 @@ pEntity = Const . ch <$> pEntityChar
 
 unlessStrict :: PMonad m => P m ()
 unlessStrict = getOption optStrict >>= guard . not
+
+---
+
+pMathWord :: PMonad m => P m Text
+pMathWord = mconcat <$> (many1 mathChunk)
+  where mathChunk = (sym '\\' *> (("\\" <>) . tokToVerbatim <$> anyTok))
+                 <|> (tokToVerbatim <$> normalMath)
+        normalMath = satisfyTok $ \t ->
+                        t /= SPACE && t /= NEWLINE && t /= SYM '$'
+        tokToVerbatim t = toksToVerbatim [t]
+
+pMath :: PMonad m => P m (PR Inlines)
+pMath = unlessStrict *>
+      ( (Const . math DisplayMath <$> (pMathDisplay >>= pApplyMacros'))
+    <|> (Const . math InlineMath  <$> (pMathInline >>= pApplyMacros')))
+
+pApplyMacros' :: PMonad m => Text -> P m Text
+pApplyMacros' = return . id -- TODO
+
+pMathDisplay :: PMonad m => P m Text
+pMathDisplay = try (mark *> verbTextTill normal (try mark))
+  where mark = sym '$' *> sym '$' *> notFollowedBy (sym '$')
+        normal = (nonNewline <|> SYM '\n' <$ pEndline)
+
+pMathInline :: PMonad m => P m Text
+pMathInline = try $ do
+  sym '$'
+  notFollowedBy space
+  words' <- sepBy1 pMathWord (skipMany1 $ pSp <|> pEndline)
+  sym '$'
+  let digitTok (SYM d) = isDigit d
+      digitTok _       = False
+  notFollowedBy $ satisfyTok digitTok
+  return $ T.unwords words'

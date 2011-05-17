@@ -44,6 +44,9 @@ doubleQuoted = single . Quoted DoubleQuoted
 lineBreak :: Inlines
 lineBreak = single LineBreak
 
+math :: MathType -> Text -> Inlines
+math t = single . Math t
+
 rawInline :: Format -> Text -> Inlines
 rawInline f = single . RawInline f
 

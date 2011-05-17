@@ -4,7 +4,8 @@ x reference notes parser
 _ fenced code blocks
 _ fancy list numbers
 _ definition lists
-_ tex math
+x tex math
+_ tex math macros
 _ inline tex?
 _ non-strict treatment of html
 _ tables! (rethink here? use org-mode tables?)
