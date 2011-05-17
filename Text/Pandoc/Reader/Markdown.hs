@@ -356,7 +356,7 @@ enum = try $ do
   return $ SYM '#'
 
 pCode :: PMonad m => P m (PR Blocks)
-pCode = {- pCodeDelimited <|> -} pCodeIndented
+pCode = pCodeIndented <|> (unlessStrict *> pCodeDelimited)
 
 pCodeIndented :: PMonad m => P m (PR Blocks)
 pCodeIndented  = try $ do
@@ -366,63 +366,53 @@ pCodeIndented  = try $ do
   return $ Const $ code
          $ T.unlines $ Prelude.reverse $ dropWhile T.null $ reverse (x:xs)
 
-{-
-codeBlockDelimited :: PMonad m => P m (PR Blocks)
-codeBlockDelimited = try $ do
-  (size, attr) <- codeBlockDelimiter 3
-  contents <- manyTill anyLine (codeBlockDelimiter size)
-  blanklines
-  return $ CodeBlock attr $ intercalate "\n" contents
-
 codeBlockDelimiter :: PMonad m
-                   => Int -> PMonad (Int, Attr)
+                   => Int -> P m (Int, Attr)
 codeBlockDelimiter len = try $ do
-  size <- count len (char '~') >> many (char '~') >>= return . (+ len) . length
-  many spaceChar
-  attr <- option ([],[],[]) attributes
-  blankline
-  return (size, attr) 
+  size <- length <$> many1 (sym '~')
+  guard $ size >= len
+  many space
+  attr <- option nullAttr pAttributes
+  pNewline
+  return (size, attr)
 
-attributes :: GenParser Char st ([Char], [[Char]], [([Char], [Char])])
-attributes = try $ do
-  char '{'
-  many spaceChar
-  attrs <- many (attribute >>~ many spaceChar)
-  char '}'
-  let (ids, classes, keyvals) = unzip3 attrs
-  let id' = if null ids then "" else head ids
-  return (id', concat classes, concat keyvals)  
+pAttributes :: PMonad m => P m Attr
+pAttributes = try $ sym '{' *> sps *> (mconcat <$> (pAttribute `sepBy` sps))
+                    <* sps <* sym '}'
 
-attribute :: GenParser Char st ([Char], [[Char]], [([Char], [Char])])
-attribute = identifierAttr <|> classAttr <|> keyValAttr
+pAttribute :: PMonad m => P m Attr
+pAttribute = pIdentifierAttr <|> pClassAttr <|> pKeyValAttr
 
-identifier :: GenParser Char st [Char]
-identifier = do
-  first <- letter
-  rest <- many $ alphaNum <|> oneOf "-_:."
-  return (first:rest)
+pIdentifier :: PMonad m => P m Text
+pIdentifier = do
+  first <- wordTok
+  rest  <- many $ wordTok <|> sym '-' <|> sym '_' <|> sym ':' <|> sym '.'
+  return $ toksToVerbatim (first:rest)
 
-identifierAttr :: GenParser Char st ([Char], [a], [a1])
-identifierAttr = try $ do
-  char '#'
-  result <- identifier
-  return (result,[],[])
+pIdentifierAttr :: PMonad m => P m Attr
+pIdentifierAttr = try $ do
+  sym '#'
+  x <- pIdentifier
+  return $ Attr [("id", x)]
 
-classAttr :: GenParser Char st ([Char], [[Char]], [a])
-classAttr = try $ do
-  char '.'
-  result <- identifier
-  return ("",[result],[])
+pClassAttr :: PMonad m => P m Attr
+pClassAttr = try $ do
+  sym '.'
+  x <- pIdentifier
+  return $ Attr [("class", x)]
 
-keyValAttr :: GenParser Char st ([Char], [a], [([Char], [Char])])
-keyValAttr = try $ do
-  key <- identifier
-  char '='
-  char '"'
-  val <- manyTill (satisfy (/='\n')) (char '"')
-  return ("",[],[(key,val)])
+pKeyValAttr :: PMonad m => P m Attr
+pKeyValAttr = try $ do
+  key <- pIdentifier
+  sym '='
+  val <- (T.drop 1 . T.init) <$> pQuotedText
+  return $ Attr [(key, val)]
 
--}
+pCodeDelimited :: PMonad m => P m (PR Blocks)
+pCodeDelimited = try $ do
+  (size, attr) <- codeBlockDelimiter 3
+  contents <- manyTill (verbLine <* pNewline) (codeBlockDelimiter size)
+  return $ Const $ codeAttr attr $ T.unlines contents
 
 pHrule :: PMonad m => P m (PR Blocks)
 pHrule = try $ do

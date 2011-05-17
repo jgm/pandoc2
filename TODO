@@ -1,7 +1,7 @@
 TODO:
 Markdown syntax extensions:
 x reference notes parser
-_ fenced code blocks
+x fenced code blocks
 _ fancy list numbers
 _ definition lists
 x tex math

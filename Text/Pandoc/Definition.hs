@@ -86,10 +86,11 @@ instance Eq Key where
 instance Ord Key where
   Key x `compare` Key y = transformBi T.toUpper x `compare` transformBi T.toUpper y
 
-data Attr = Attr { attrId      :: Text
-                 , attrClasses :: [Text]
-                 , attrKeyVals :: [(Text, Text)] }
-                 deriving (Show, Read, Data, Ord, Eq, Typeable)
+newtype Attr = Attr [(Text, Text)]
+             deriving (Show, Read, Data, Ord, Eq, Typeable, Monoid)
+
+nullAttr :: Attr
+nullAttr = Attr []
 
 data ListAttr = ListAttr { listTight  :: Bool
                          , listStyle  :: ListStyle }
@@ -97,9 +98,6 @@ data ListAttr = ListAttr { listTight  :: Bool
 
 data ListStyle = Bullet | Ordered
                deriving (Show, Read, Data, Ord, Eq, Typeable)
-
-nullAttr :: Attr
-nullAttr = Attr "" [] []
 
 (<>) :: Monoid a => a -> a -> a
 (<>) = mappend

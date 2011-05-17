@@ -62,7 +62,8 @@ blockToHtml (List attr bs) =
   in  case listStyle attr of
            Bullet    -> H.ul <$> nl <> items
            Ordered   -> H.ol <$> nl <> items
-blockToHtml (Code _attr t) = return $ H.pre $ H.code $ toHtml t
+blockToHtml (Code attr t) = return $ addAttributes attr
+                                   $ H.pre $ H.code $ toHtml t
 blockToHtml (RawBlock (Format "html") t) = return $ preEscapedText t
 blockToHtml (RawBlock _ _) = return mempty
 blockToHtml (Header lev ils) = h <$> inlinesToHtml ils
@@ -130,3 +131,15 @@ addBacklink refid bs =
        (Para ils : xs)   -> fromItems $ reverse $ Para (ils <+> back) : xs
        (Plain xls : xs)  -> fromItems $ reverse $ Plain (xls <+> back) : xs
        xs                -> fromItems $ reverse $ Plain back : xs
+
+-- TODO: rewrite map go keys without nub, using a fold:
+addAttributes :: Attr -> Html -> Html
+addAttributes (Attr []) h = h
+addAttributes (Attr attr) h =
+  foldl (\acc (k,v) -> acc ! (customAttribute $ textTag k) (toValue v)) h
+  $ consolidateAttr attr
+    where consolidateAttr = foldl go []
+          go acc (k,v) = case lookup k acc of
+                              Nothing -> (k,v):acc
+                              Just v' -> (k, T.unwords [v',v]):
+                                           [(x,y) | (x,y) <- acc, x /= k]
