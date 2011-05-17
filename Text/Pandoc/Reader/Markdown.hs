@@ -495,21 +495,26 @@ pMathWord = mconcat <$> (many1 mathChunk)
 
 pMath :: PMonad m => P m (PR Inlines)
 pMath = unlessStrict *>
-      ( (Const . math DisplayMath <$> (pMathDisplay >>= pApplyMacros'))
-    <|> (Const . math InlineMath  <$> (pMathInline >>= pApplyMacros')))
+  try (do
+    sym '$'
+    display <- option False (True <$ sym '$')
+    raw <- if display
+              then notFollowedBy (sym '$') *> pMathDisplay
+              else notFollowedBy (space <|> newline) *> pMathInline
+    raw' <- pApplyMacros' raw
+    let mt = if display then DisplayMath else InlineMath
+    return $ Const $ math mt raw')
 
 pApplyMacros' :: PMonad m => Text -> P m Text
 pApplyMacros' = return . id -- TODO
 
 pMathDisplay :: PMonad m => P m Text
-pMathDisplay = try (mark *> verbTextTill normal (try mark))
-  where mark = sym '$' *> sym '$' *> notFollowedBy (sym '$')
+pMathDisplay = try (verbTextTill normal mark)
+  where mark   = try $ sym '$' *> sym '$'
         normal = (nonNewline <|> SYM '\n' <$ pEndline)
 
 pMathInline :: PMonad m => P m Text
 pMathInline = try $ do
-  sym '$'
-  notFollowedBy space
   words' <- sepBy1 pMathWord (skipMany1 $ pSp <|> pEndline)
   sym '$'
   let digitTok (SYM d) = isDigit d
