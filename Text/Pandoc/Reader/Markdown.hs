@@ -356,12 +356,73 @@ enum = try $ do
   return $ SYM '#'
 
 pCode :: PMonad m => P m (PR Blocks)
-pCode  = try $ do
+pCode = {- pCodeDelimited <|> -} pCodeIndented
+
+pCodeIndented :: PMonad m => P m (PR Blocks)
+pCodeIndented  = try $ do
   x <- indentSpace *> verbLine
   xs <- option []
         $ try $ pNewline *> sepBy ((indentSpace <|> eol) *> verbLine) pNewline
   return $ Const $ code
          $ T.unlines $ Prelude.reverse $ dropWhile T.null $ reverse (x:xs)
+
+{-
+codeBlockDelimited :: PMonad m => P m (PR Blocks)
+codeBlockDelimited = try $ do
+  (size, attr) <- codeBlockDelimiter 3
+  contents <- manyTill anyLine (codeBlockDelimiter size)
+  blanklines
+  return $ CodeBlock attr $ intercalate "\n" contents
+
+codeBlockDelimiter :: PMonad m
+                   => Int -> PMonad (Int, Attr)
+codeBlockDelimiter len = try $ do
+  size <- count len (char '~') >> many (char '~') >>= return . (+ len) . length
+  many spaceChar
+  attr <- option ([],[],[]) attributes
+  blankline
+  return (size, attr) 
+
+attributes :: GenParser Char st ([Char], [[Char]], [([Char], [Char])])
+attributes = try $ do
+  char '{'
+  many spaceChar
+  attrs <- many (attribute >>~ many spaceChar)
+  char '}'
+  let (ids, classes, keyvals) = unzip3 attrs
+  let id' = if null ids then "" else head ids
+  return (id', concat classes, concat keyvals)  
+
+attribute :: GenParser Char st ([Char], [[Char]], [([Char], [Char])])
+attribute = identifierAttr <|> classAttr <|> keyValAttr
+
+identifier :: GenParser Char st [Char]
+identifier = do
+  first <- letter
+  rest <- many $ alphaNum <|> oneOf "-_:."
+  return (first:rest)
+
+identifierAttr :: GenParser Char st ([Char], [a], [a1])
+identifierAttr = try $ do
+  char '#'
+  result <- identifier
+  return (result,[],[])
+
+classAttr :: GenParser Char st ([Char], [[Char]], [a])
+classAttr = try $ do
+  char '.'
+  result <- identifier
+  return ("",[result],[])
+
+keyValAttr :: GenParser Char st ([Char], [a], [([Char], [Char])])
+keyValAttr = try $ do
+  key <- identifier
+  char '='
+  char '"'
+  val <- manyTill (satisfy (/='\n')) (char '"')
+  return ("",[],[(key,val)])
+
+-}
 
 pHrule :: PMonad m => P m (PR Blocks)
 pHrule = try $ do
