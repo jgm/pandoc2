@@ -468,9 +468,14 @@ pHtmlBlock = Const . rawBlock (Format "html")
 
 pHtmlComment :: PMonad m => P m Text
 pHtmlComment = try $ do
-  sym '<' *> sym '!' *> sym '-' *> sym '-'
-  x <- verbTextTill anyTok (try $ sym '-' *> sym '-' *> sym '>')
-  return $ "<!--" <> x <> "-->"
+  sym '<' *> sym '!'
+  let twodash = try $ sym '-' *> sym '-'
+  let subComment = (\x -> "--" <> toksToVerbatim x <> "--")
+                <$> (twodash *> manyTill anyTok twodash)
+  let subSpace   = toksToVerbatim <$> many1 space
+  x <- mconcat <$>
+        (manyTill (subComment <|> subSpace <|> "\n" <$ pNewline) (sym '>'))
+  return $ "<!" <> x <> ">"
 
 pHtmlTag :: PMonad m => P m ([Tag String], Text)
 pHtmlTag = try $ do
