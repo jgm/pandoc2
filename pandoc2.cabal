@@ -35,6 +35,7 @@ Library
                    Text.Pandoc.Definition,
                    Text.Pandoc.Builder,
                    Text.Pandoc.Parsing,
+                   Text.Pandoc.Parsing.Generic,
                    Text.Pandoc.Shared,
                    Text.Pandoc.Reader.Markdown,
                    Text.Pandoc.Writer.HTML
