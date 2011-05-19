@@ -3,6 +3,7 @@ module Text.Pandoc.Reader.Markdown
 where
 import Text.Pandoc.Definition
 import Text.Pandoc.Shared
+import Text.Pandoc.Parsing.Generic
 import Text.Pandoc.Parsing
 import Text.Pandoc.Builder
 import Data.Monoid
@@ -296,7 +297,8 @@ pHeaderATX = try $ do
 pList :: PMonad m => P m (PR Blocks)
 pList = do
   (mark, style) <- lookAhead
-                 $ ((enum, Ordered) <$ enum) <|> ((bullet, Bullet) <$ bullet)
+                 $ ((enum, Ordered 1 DefaultStyle DefaultDelim) <$ enum)
+                 <|> ((bullet, Bullet) <$ bullet)
   (tights, bs) <- unzip <$> many1 (pListItem mark)
   return $ Future $ \s ->
     single $ List ListAttr{ listTight = and tights, listStyle = style }

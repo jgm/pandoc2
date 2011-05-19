@@ -11,6 +11,8 @@ module Text.Pandoc.Definition
        , MathType(..)
        , QuoteType(..)
        , ListAttr(..)
+       , ListNumberStyle(..)
+       , ListNumberDelim(..)
        , ListStyle(..)
        , Key(..)
        , Attr(..)

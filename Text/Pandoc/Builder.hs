@@ -68,13 +68,18 @@ codeAttr attr = single . Code attr
 code :: Text -> Blocks
 code = codeAttr nullAttr
 
+list :: ListAttr -> [Blocks] -> Blocks
+list attr = single . List attr
+
 orderedListTight :: [Blocks] -> Blocks
 orderedListTight =
-  single . List ListAttr{ listTight = True, listStyle = Ordered }
+  single . List ListAttr{ listTight = True
+                        , listStyle = Ordered  1 DefaultStyle DefaultDelim}
 
 orderedListLoose :: [Blocks] -> Blocks
 orderedListLoose =
-  single . List ListAttr{ listTight = False, listStyle = Ordered }
+  single . List ListAttr{ listTight = False
+                        , listStyle = Ordered  1 DefaultStyle DefaultDelim}
 
 bulletListTight :: [Blocks] -> Blocks
 bulletListTight =

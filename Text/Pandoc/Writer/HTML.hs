@@ -59,9 +59,19 @@ blockToHtml (List attr bs) =
                then transformBi paraToPlain bs
                else bs
       items = F.foldMap (\b -> (H.li <$> blocksToHtml b) <> nl) bs'
+      addStart 1 t = t
+      addStart n t = t ! A.start (toValue n)
+      addStyle sty t = t ! A.type_ (toValue $ case sty of
+                                                   Decimal    -> "1" :: String
+                                                   LowerAlpha -> "a"
+                                                   UpperAlpha -> "A"
+                                                   LowerRoman -> "i"
+                                                   UpperRoman -> "I"
+                                                   _          -> "1")
   in  case listStyle attr of
-           Bullet    -> H.ul <$> nl <> items
-           Ordered   -> H.ol <$> nl <> items
+           Bullet              -> H.ul <$> nl <> items
+           Ordered start sty _ -> ol   <$> nl <> items
+              where ol = addStart start $ addStyle sty $ H.ol
 blockToHtml (Code attr t) = return $ addAttributes attr
                                    $ H.pre $ H.code $ toHtml t
 blockToHtml (RawBlock (Format "html") t) = return $ preEscapedText t
