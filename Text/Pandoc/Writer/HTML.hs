@@ -61,6 +61,7 @@ blockToHtml (List attr bs) =
       items = F.foldMap (\b -> (H.li <$> blocksToHtml b) <> nl) bs'
       addStart 1 t = t
       addStart n t = t ! A.start (toValue n)
+      addStyle DefaultStyle t = t
       addStyle sty t = t ! A.type_ (toValue $ case sty of
                                                    Decimal    -> "1" :: String
                                                    LowerAlpha -> "a"
