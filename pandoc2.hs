@@ -20,7 +20,7 @@ main = do
                            , optStrict  = strict opts
                            , optSmart   = smart opts
                            }
-  let convert = parseWith poptions' pDoc . decodeUtf8
+  let convert = markdownDoc poptions' . decodeUtf8
   let render = case map toLower (to opts) of
                     "html"   -> renderHtmlToByteStringIO B.putStr .
                                  docToHtml poptions
