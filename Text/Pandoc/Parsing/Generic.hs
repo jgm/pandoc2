@@ -1,9 +1,8 @@
 module Text.Pandoc.Parsing.Generic
 where
 import Text.Parsec
-import Text.Parsec.Pos
 import Control.Applicative ((<$>), (*>))
-import Control.Monad (join)
+import Control.Monad (join, guard)
 
 -- | 'sepBy' redefined to include a 'try', so the separator
 -- can fail.
@@ -38,4 +37,10 @@ many1Till p q = do
   xs <- manyTill p q
   return (x:xs)
 
+-- | Fail unless in column 1.
+pInColumn1 :: Stream s m t
+           => ParsecT s u m ()
+pInColumn1 = do
+  pos <- getPosition
+  guard $ sourceColumn pos == 1
 

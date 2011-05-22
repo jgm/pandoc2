@@ -34,11 +34,14 @@ Library
   Exposed-Modules: Text.Pandoc,
                    Text.Pandoc.Definition,
                    Text.Pandoc.Builder,
-                   Text.Pandoc.Parsing,
-                   Text.Pandoc.Parsing.Generic,
                    Text.Pandoc.Shared,
                    Text.Pandoc.Reader.Markdown,
                    Text.Pandoc.Writer.HTML
+
+  Other-Modules:   Text.Pandoc.Parsing.Types,
+                   Text.Pandoc.Parsing.Generic,
+                   Text.Pandoc.Parsing.PMonad,
+                   Text.Pandoc.Parsing.TextTok
 
 Executable pandoc2
   Main-Is:            pandoc2.hs
