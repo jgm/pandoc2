@@ -9,6 +9,7 @@ import Text.Pandoc.Parsing.PMonad
 import Text.Pandoc.Parsing.TextTok
 import Text.Pandoc.Builder
 import Data.Monoid
+import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text (Text)
@@ -307,18 +308,23 @@ pHeaderATX = try $ do
 
 pList :: PMonad m => MP m (PR Blocks)
 pList = do
-  (mark, style) <- lookAhead
-                 $ ((enum, Ordered 1 DefaultStyle DefaultDelim) <$ enum)
-                 <|> ((bullet, Bullet) <$ bullet)
-  (tights, bs) <- unzip <$> many1 (pListItem mark)
+  marker <- lookAhead listStart
+  (tights, bs) <- unzip <$> many1 (pListItem marker)
+  let style = case marker of
+                   BulletMarker _     -> Bullet
+                   NumberMarker n s d -> Ordered (fromMaybe 1 n) s d
+                   _                  -> error $ show marker <> " not supported"
   return $ Future $ \s ->
     single $ List ListAttr{ listTight = and tights, listStyle = style }
            $ map (evalResult s) bs
 
-pListItem :: PMonad m => MP m a -> MP m (Bool, PR Blocks) -- True = suitable for tight list
-pListItem start = try $ do
+pListItem :: PMonad m
+          => ListMarker
+          -> MP m (Bool, PR Blocks) -- True = suitable for tight list
+pListItem marker = try $ do
   n <- option 0 pNewlines
-  start
+  m <- listStart
+  guard $ m `continues` marker
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ sps *> listStart) $ do
       bs <- mconcat
@@ -336,6 +342,12 @@ data ListMarker = BulletMarker Char
                 | NumberMarker (Maybe Int) ListNumberStyle ListNumberDelim
                 | ExampleMarker Text ListNumberStyle ListNumberDelim
                 deriving Show
+
+continues :: ListMarker -> ListMarker -> Bool
+continues (BulletMarker c) (BulletMarker d) = c == d
+continues (NumberMarker _ s1 d1) (NumberMarker _ s2 d2) = s1 == s2 && d1 == d2
+continues (ExampleMarker _ s1 d1) (ExampleMarker _ s2 d2) = s1 == s2 && d1 == d2
+continues _ _ = False
 
 listStart :: PMonad m => MP m ListMarker
 listStart = bullet <|> enum
