@@ -358,6 +358,7 @@ bullet = try $ do
 enum :: PMonad m => MP m ListMarker
 enum = try $ do
   n <- nonindentSpace
+  lparen <- option False (True <$ sym '(')
   let digSym = satisfyTok isDigSym
       isDigSym (SYM d) = isDigit d
       isDigSym _       = False
@@ -367,14 +368,16 @@ enum = try $ do
   let num' = case map fromSym num of
                   "#" -> Nothing
                   x   -> Just $ read x
-  sym '.'
+  delim <- if lparen
+              then TwoParens <$ sym ')'
+              else (Period <$ sym '.') <|> (OneParen <$ sym ')')
   space <|> lookAhead newline
   tabstop <- getOption optTabStop
   -- if following spaces, gobble up to next tabstop
   case (tabstop - (n + length num + 2)) of
      x | x > 0 -> upto (tabstop - (n + 2)) space
      _         -> return []
-  return $ NumberMarker num' DefaultStyle DefaultDelim
+  return $ NumberMarker num' DefaultStyle delim
 
 pCode :: PMonad m => MP m (PR Blocks)
 pCode = pCodeIndented <|> (unlessStrict *> pCodeDelimited)
