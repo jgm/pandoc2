@@ -332,40 +332,49 @@ pListItem start = try $ do
                    [Para _, List _ _ ] -> return (True, bs)
                    _                   -> return (False, bs)
 
-listStart :: PMonad m => MP m Tok
+data ListMarker = BulletMarker Char
+                | NumberMarker (Maybe Int) ListNumberStyle ListNumberDelim
+                | ExampleMarker Text ListNumberStyle ListNumberDelim
+                deriving Show
+
+listStart :: PMonad m => MP m ListMarker
 listStart = bullet <|> enum
 
-bullet :: PMonad m => MP m Tok
+bullet :: PMonad m => MP m ListMarker
 bullet = try $ do
   n <- nonindentSpace
-  b <- sym '-' <|> sym '+' <|> sym '*'
-  let bul = satisfyTok (== b)
+  SYM x <- sym '-' <|> sym '+' <|> sym '*'
   space <|> lookAhead newline
   tabstop <- getOption optTabStop
   -- if following spaces, gobble up to next tabstop
   case (tabstop - (n+2)) of
-     x | x > 0 -> upto (tabstop - (n + 2)) space
+     y | y > 0 -> upto (tabstop - (n + 2)) space
      _         -> return []
   -- not an hrule
-  notFollowedBy $ '\n' <$ (sps *> bul *> sps *> bul *> sps
-                           *> skipMany (bul *> sps) *> newline)
-  return b
+  notFollowedBy $ '\n' <$ (sps *> sym x *> sps *> sym x *> sps
+                           *> skipMany (sym x *> sps) *> newline)
+  return $ BulletMarker x
 
-enum :: PMonad m => MP m Tok
+enum :: PMonad m => MP m ListMarker
 enum = try $ do
   n <- nonindentSpace
   let digSym = satisfyTok isDigSym
       isDigSym (SYM d) = isDigit d
       isDigSym _       = False
-  m <- length <$> (many digSym <|> count 1 (sym '#'))
+  num <- many digSym <|> count 1 (sym '#')
+  let fromSym (SYM c) = c
+      fromSym _       = '?'
+  let num' = case map fromSym num of
+                  "#" -> Nothing
+                  x   -> Just $ read x
   sym '.'
   space <|> lookAhead newline
   tabstop <- getOption optTabStop
   -- if following spaces, gobble up to next tabstop
-  case (tabstop - (n+m+2)) of
+  case (tabstop - (n + length num + 2)) of
      x | x > 0 -> upto (tabstop - (n + 2)) space
      _         -> return []
-  return $ SYM '#'
+  return $ NumberMarker num' DefaultStyle DefaultDelim
 
 pCode :: PMonad m => MP m (PR Blocks)
 pCode = pCodeIndented <|> (unlessStrict *> pCodeDelimited)
