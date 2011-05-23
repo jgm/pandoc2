@@ -370,7 +370,7 @@ bullet = try $ do
 enum :: PMonad m => MP m ListMarker
 enum = try $ do
   n <- nonindentSpace
-  lparen <- option False (True <$ sym '(')
+  lparen <- option False (True <$ (unlessStrict *> sym '('))
   let digSym = satisfyTok isDigSym
       isDigSym (SYM d) = isDigit d
       isDigSym _       = False
@@ -382,7 +382,8 @@ enum = try $ do
                   x   -> Just $ read x
   delim <- if lparen
               then TwoParens <$ sym ')'
-              else (Period <$ sym '.') <|> (OneParen <$ sym ')')
+              else (Period <$ sym '.')
+                   <|> (OneParen <$ (unlessStrict *> sym ')'))
   space <|> lookAhead newline
   tabstop <- getOption optTabStop
   -- if following spaces, gobble up to next tabstop
