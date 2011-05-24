@@ -13,7 +13,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text (Text)
-import Data.Char (toLower, isDigit)
+import Data.Char (toLower, isDigit, ord)
 import Text.Parsec hiding (sepBy, space, newline)
 import Control.Monad
 import Control.Applicative ((<$>), (<$), (*>), (<*))
@@ -371,26 +371,52 @@ enum :: PMonad m => MP m ListMarker
 enum = try $ do
   n <- nonindentSpace
   lparen <- option False (True <$ (unlessStrict *> sym '('))
-  let digSym = satisfyTok isDigSym
-      isDigSym (SYM d) = isDigit d
-      isDigSym _       = False
-  num <- many digSym <|> count 1 (sym '#')
-  let fromSym (SYM c) = c
-      fromSym _       = '?'
-  let num' = case map fromSym num of
-                  "#" -> Nothing
-                  x   -> Just $ read x
+  (num, len, sty) <- pListNumber
   delim <- if lparen
               then TwoParens <$ sym ')'
               else (Period <$ sym '.')
                    <|> (OneParen <$ (unlessStrict *> sym ')'))
-  space <|> lookAhead newline
+  let space' = if sty == UpperAlpha && delim == Period
+                  then space *> space  -- to avoid interpreting initials
+                  else space
+  space' <|> lookAhead newline
   tabstop <- getOption optTabStop
   -- if following spaces, gobble up to next tabstop
-  case (tabstop - (n + length num + 2)) of
+  case (tabstop - (n + len + 2)) of
      x | x > 0 -> upto (tabstop - (n + 2)) space
      _         -> return []
-  return $ NumberMarker num' DefaultStyle delim
+  return $ NumberMarker num sty delim
+
+pListNumber :: PMonad m => MP m (Maybe Int, Int, ListNumberStyle)
+                                 -- (number, length, style)
+pListNumber =  pDecimalNumber
+           <|> (unlessStrict *> (pRomanNumber <|> pAlphaNumber))
+  where pDecimalNumber = do
+          strict <- getOption optStrict
+          ds <- many1 digSym <|> count 1 (sym '#')
+          case ds of
+               [SYM '#']  -> return (Nothing, 1, DefaultStyle)
+               _          -> return (Just $ digitsToNum ds, length ds,
+                                      if strict then DefaultStyle else Decimal)
+        pAlphaNumber = try $ do
+          WORD w <- wordTok
+          case T.unpack w of
+               [c] | c >= 'a' && c <= 'z' ->
+                     return (Just (1 + ord c - ord 'a'), 1, LowerAlpha)
+               [c] | c >= 'A' && c <= 'Z' ->
+                     return (Just (1 + ord c - ord 'A'), 1, UpperAlpha)
+               _  -> mzero
+        pRomanNumber = try $ do
+          WORD w <- wordTok
+          case fromRoman w of
+               Just (n, sty) -> return (Just n, T.length w, sty)
+               Nothing       -> mzero
+        digSym           = satisfyTok isDigSym
+        isDigSym (SYM d) = isDigit d
+        isDigSym _       = False
+        fromSym (SYM c)  | isDigit c = c
+        fromSym _        = error "Non-digit in fromSym/pListNumber"
+        digitsToNum      = read . map fromSym
 
 pCode :: PMonad m => MP m (PR Blocks)
 pCode = pCodeIndented <|> (unlessStrict *> pCodeDelimited)
