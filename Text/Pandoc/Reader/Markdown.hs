@@ -346,34 +346,19 @@ data ListMarker = BulletMarker Char
 
 continues :: ListMarker -> ListMarker -> Bool
 continues (BulletMarker c) (BulletMarker d) = c == d
-continues (NumberMarker (Just 1) s1 d1)
-          (NumberMarker (Just 8) s2 d2)
-          | s1 == UpperRoman && s2 == UpperAlpha ||
-            s1 == LowerRoman && s2 == LowerAlpha = d1 == d2 -- I continues H
-continues (NumberMarker (Just 22) s1 d1)
-          (NumberMarker (Just 4) s2 d2)
-          | s2 == UpperRoman && s1 == UpperAlpha ||
-            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- v continues iv
-continues (NumberMarker (Just 24) s1 d1)
-          (NumberMarker (Just 9) s2 d2)
-          | s2 == UpperRoman && s1 == UpperAlpha ||
-            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- x continues ix
-continues (NumberMarker (Just 12) s1 d1)
-          (NumberMarker (Just 49) s2 d2)
-          | s2 == UpperRoman && s1 == UpperAlpha ||
-            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- l continues 49
-continues (NumberMarker (Just 3) s1 d1)
-          (NumberMarker (Just 99) s2 d2)
-          | s2 == UpperRoman && s1 == UpperAlpha ||
-            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- c continues 99
-continues (NumberMarker (Just 4) s1 d1)
-          (NumberMarker (Just 499) s2 d2)
-          | s2 == UpperRoman && s1 == UpperAlpha ||
-            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- d continues 499
-continues (NumberMarker (Just 12) s1 d1)
-          (NumberMarker (Just 999) s2 d2)
-          | s2 == UpperRoman && s1 == UpperAlpha ||
-            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- m continues 999
+continues (NumberMarker (Just 1) s1 d1) (NumberMarker (Just 8) s2 d2)
+  | s1 == UpperRoman && s2 == UpperAlpha ||
+    s1 == LowerRoman && s2 == LowerAlpha = d1 == d2 -- I continues H
+continues (NumberMarker (Just n1) s1 d1) (NumberMarker (Just n2) s2 d2)
+  | (s2 == UpperRoman && s1 == UpperAlpha ||
+     s2 == LowerRoman && s1 == LowerAlpha) &&
+    (  (n1 == 22 && n2 == 4)  -- v continues 4
+    || (n1 == 24 && n2 == 9)  -- x continues 9
+    || (n1 == 12 && n2 == 49) -- l continues 49
+    || (n1 == 3 && n2 == 99)  -- c continues 99
+    || (n1 == 4 && n2 == 499) -- d continues 499
+    || (n1 == 12 && n2 == 999) -- m continues 999
+    ) = d1 == d2
 continues (NumberMarker _ s1 d1) (NumberMarker _ s2 d2) = s1 == s2 && d1 == d2
 continues (ExampleMarker _ s1 d1) (ExampleMarker _ s2 d2) = s1 == s2 && d1 == d2
 continues _ _ = False
