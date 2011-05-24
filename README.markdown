@@ -16,6 +16,7 @@ The following pandoc markdown extensions have been implemented:
 
 * smart typography (enable with `--smart`)
 * delimited code blocks
+* markdown inside HTML block-level tags
 * TeX math
 * footnotes
 * fancy list markers
