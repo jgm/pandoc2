@@ -345,6 +345,34 @@ data ListMarker = BulletMarker Char
 
 continues :: ListMarker -> ListMarker -> Bool
 continues (BulletMarker c) (BulletMarker d) = c == d
+continues (NumberMarker (Just 1) s1 d1)
+          (NumberMarker (Just 8) s2 d2)
+          | s1 == UpperRoman && s2 == UpperAlpha ||
+            s1 == LowerRoman && s2 == LowerAlpha = d1 == d2 -- I continues H
+continues (NumberMarker (Just 22) s1 d1)
+          (NumberMarker (Just 4) s2 d2)
+          | s2 == UpperRoman && s1 == UpperAlpha ||
+            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- v continues iv
+continues (NumberMarker (Just 24) s1 d1)
+          (NumberMarker (Just 9) s2 d2)
+          | s2 == UpperRoman && s1 == UpperAlpha ||
+            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- x continues ix
+continues (NumberMarker (Just 12) s1 d1)
+          (NumberMarker (Just 49) s2 d2)
+          | s2 == UpperRoman && s1 == UpperAlpha ||
+            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- l continues 49
+continues (NumberMarker (Just 3) s1 d1)
+          (NumberMarker (Just 99) s2 d2)
+          | s2 == UpperRoman && s1 == UpperAlpha ||
+            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- c continues 99
+continues (NumberMarker (Just 4) s1 d1)
+          (NumberMarker (Just 499) s2 d2)
+          | s2 == UpperRoman && s1 == UpperAlpha ||
+            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- d continues 499
+continues (NumberMarker (Just 12) s1 d1)
+          (NumberMarker (Just 999) s2 d2)
+          | s2 == UpperRoman && s1 == UpperAlpha ||
+            s2 == LowerRoman && s1 == LowerAlpha = d1 == d2 -- m continues 999
 continues (NumberMarker _ s1 d1) (NumberMarker _ s2 d2) = s1 == s2 && d1 == d2
 continues (ExampleMarker _ s1 d1) (ExampleMarker _ s2 d2) = s1 == s2 && d1 == d2
 continues _ _ = False
@@ -390,7 +418,7 @@ enum = try $ do
 pListNumber :: PMonad m => MP m (Maybe Int, Int, ListNumberStyle)
                                  -- (number, length, style)
 pListNumber =  pDecimalNumber
-           <|> (unlessStrict *> (pRomanNumber <|> pAlphaNumber))
+           <|> (unlessStrict *> (pAlphaNumber <|> pRomanNumber))
   where pDecimalNumber = do
           strict <- getOption optStrict
           ds <- many1 digSym <|> count 1 (sym '#')
@@ -401,9 +429,10 @@ pListNumber =  pDecimalNumber
         pAlphaNumber = try $ do
           WORD w <- wordTok
           case T.unpack w of
-               [c] | c >= 'a' && c <= 'z' ->
+               -- we let I/i start Roman numeral list
+               [c] | c >= 'a' && c <= 'z' && c /= 'i' ->
                      return (Just (1 + ord c - ord 'a'), 1, LowerAlpha)
-               [c] | c >= 'A' && c <= 'Z' ->
+               [c] | c >= 'A' && c <= 'Z' && c /= 'I' ->
                      return (Just (1 + ord c - ord 'A'), 1, UpperAlpha)
                _  -> mzero
         pRomanNumber = try $ do
