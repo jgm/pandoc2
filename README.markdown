@@ -6,11 +6,29 @@ there were many Haskell libraries available.  In retrospect, I regret
 some of the early design decisions.  This repository is a place to
 explore some architectural improvements.
 
-So far, there's just a definition of the basic data structure, a
+So far, there's a definition of the basic data structure, a
 builder DSL, a markdown reader, and an HTML writer.  The package
-includes an executable, markdown, that behaves just like the original
-Markdown.pl, without any pandoc extensions.  This program passes all
-of the tests from the Markdown test suite.
+includes an executable, `pandoc2` -- `pandoc2 --help` will give
+usage instructions.  With the `--strict` flag, the program passes
+all of the tests from the Markdown test suite.
+
+The following pandoc markdown extensions have been implemented:
+
+* smart typography (enable with `--smart`)
+* delimited code blocks
+* TeX math
+* footnotes
+* fancy list markers
+
+There are a few changes in how lists work.  The most important is
+that changes in style now trigger a new list. The following is one
+list in pandoc, and two lists in pandoc2:
+
+    + one
+    + two
+
+    - three
+    - four
 
 Some differences from pandoc 1
 ------------------------------
