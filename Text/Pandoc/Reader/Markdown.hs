@@ -133,11 +133,12 @@ pEmail = try $ do
 pUri :: PMonad m => MP m Text
 pUri = try $ do
   sym '<'
-  xs <- text1Till nonSpace (sym ':')
-  guard $ T.toLower xs `elem` ["http", "https", "ftp",
-                               "file", "mailto", "news", "telnet" ]
-  ys <- textTill nonNewline (sym '>')
-  return $ xs <> ":" <> ys
+  WORD x <- wordTok
+  sym ':'
+  guard $ T.toLower x `elem` ["http", "https", "ftp",
+                              "file", "mailto", "news", "telnet" ]
+  y <- textTill nonNewline (sym '>')
+  return $ x <> ":" <> y
 
 pBracketedInlines :: PMonad m => MP m (PR Inlines)
 pBracketedInlines = try $
