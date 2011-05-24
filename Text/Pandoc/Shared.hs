@@ -12,6 +12,7 @@ import Data.Text (Text)
 import Network.URI ( escapeURIString, isAllowedInURI )
 import qualified Data.Text as T
 import Data.Generics.Uniplate.Data
+import Data.Char (toUpper, isLower)
 
 data LogLevel = INFO | WARNING | ERROR
               deriving (Ord, Eq, Show, Read, Data, Typeable)
@@ -69,3 +70,43 @@ textify = T.concat . map extractText . universeBi
         extractText LineBreak = T.singleton ' '
         extractText _         = T.singleton ' '
 
+fromRoman :: Text -> Maybe (Int, ListNumberStyle)
+fromRoman t =
+  case toRoman' "M" (map toUpper t') of
+       Nothing  -> Nothing
+       Just n   -> Just (n, sty)
+     where t'  = T.unpack t
+           sty = case t' of
+                      (c:_) | isLower c -> LowerRoman
+                      _                 -> UpperRoman
+           toRoman' :: String -> String -> Maybe Int
+           toRoman' _   (c:_) | not (c == 'M' || c == 'C' || c == 'D' ||
+                                     c == 'L' || c == 'X' || c == 'V' ||
+                                     c == 'I') = Nothing
+           toRoman' "M" ('M':xs) = fmap (+ 1000) $ toRoman' "M" xs
+           toRoman' "M" xs       = toRoman' "CM" xs
+           toRoman' "CM" ('C':'M':xs) = fmap (+ 900) $ toRoman' "C" xs
+           toRoman' "CM" xs      = toRoman' "D" xs
+           toRoman' "D" ('D':xs) = fmap (+ 500) $ toRoman' "D" xs
+           toRoman' "D" xs       = toRoman' "CD" xs
+           toRoman' "CD" ('C':'D':xs) = fmap (+ 400) $ toRoman' "XC" xs
+           toRoman' "CD" xs      = toRoman' "C" xs
+           toRoman' "C" ('C':xs) = fmap (+ 100) $ toRoman' "C" xs
+           toRoman' "C" xs       = toRoman' "XC" xs
+           toRoman' "XC" ('X':'C':xs) = fmap (+ 90) $ toRoman' "X" xs
+           toRoman' "XC" xs      = toRoman' "L" xs
+           toRoman' "L" ('L':xs) = fmap (+ 50) $ toRoman' "L" xs
+           toRoman' "L" xs       = toRoman' "XL" xs
+           toRoman' "XL" ('X':'L':xs) = fmap (+ 40) $ toRoman' "V" xs
+           toRoman' "XL" xs      = toRoman' "X" xs
+           toRoman' "X" ('X':xs) = fmap (+ 10) $ toRoman' "X" xs
+           toRoman' "X" xs       = toRoman' "IX" xs
+           toRoman' "IX" ('I':'X':xs) = fmap (+ 9) $ toRoman' "V" xs
+           toRoman' "IX" xs      = toRoman' "V" xs
+           toRoman' "V" ('V':xs) = fmap (+ 10) $ toRoman' "V" xs
+           toRoman' "V" xs       = toRoman' "IV" xs
+           toRoman' "IV" ('I':'V':_) = Just 4
+           toRoman' "IV" xs      = toRoman' "I" xs
+           toRoman' "I" ('I':xs) = fmap (+ 1) $ toRoman' "I" xs
+           toRoman' "I" []       = Just 0
+           toRoman' _   _        = Nothing
