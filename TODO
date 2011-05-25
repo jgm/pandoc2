@@ -3,18 +3,20 @@ Markdown syntax extensions:
 x reference notes parser
 x fenced code blocks
 x fancy list numbers
-_ definition lists
 x tex math
+x non-strict treatment of html
+_ example lists - rethink syntax to avoid clash w/ citations
+_ definition lists
 _ tex math macros
+_ tex math output (texmath reader, mathml, js)
 _ inline tex?
-_ non-strict treatment of html
 _ tables! (rethink here? use org-mode tables?)
 _ header identifiers -- or something better?
-_ example lists
-_ title block/metadata - rethink?
-_ strikeout? super/subscript?
+_ super/subscript?
+_ strikeout?
 _ picture captions? - improve
 _ citations
+_ title block/metadata - rethink?
 
 Other writers
 Other readers
