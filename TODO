@@ -22,3 +22,42 @@ Other writers
 Other readers
 Templates - better to use something standard?
 
+Example lists:
+
+##.  blah
+##.  blah
+#foo.  blah
+#bar.  baz
+#(foo).  blah
+#(bar).  baz
+!.  blah
+!.  foo
+!baz. baz
+!bar. bar
+(!) bar
+(!foo) baz
+
+##[myexamp].  blah
+
+In example ##[myexamp]
+IN example (##[myexamp])
+In example (@foo)
+Example @foo shows.
+In example (#foo)
+Example #foo shows.
+In example (!foo)
+Example !foo shows.
+
+
+---
+
+Maybe ! should be used for generic labels.
+
+# My header                   !my-header
+
+In section !my-header,
+
+internal link:
+[See section !my](!my)
+
+
