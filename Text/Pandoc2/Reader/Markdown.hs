@@ -312,15 +312,17 @@ pDefinitions = do
   return $ Future $ \s -> definitions (map (evalResult s) items)
 
 pDefSep :: PMonad m => MP m ()
-pDefSep = try $ nonindentSpace *> sym '~' *> space *> sps
+pDefSep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
+
+pDef :: PMonad m => MP m (PR Blocks)
+pDef = withBlockSep indentSpace $ withEndline (notFollowedBy pDefSep)
+       $ pDefSep *> (mconcat <$> pBlock `sepBy` pNewlines)
 
 pDefinition :: PMonad m => MP m (PR (Inlines, Blocks))
 pDefinition = try $ do
-  term <- pDefSep *> withEndline (notFollowedBy indentSpace) pInlines
-  def <- withBlockSep (indentSpace <|> eol)
-       $ withEndline (notFollowedBy pDefSep)
-       $ mconcat
-      <$> (pNewlines *> (pBlock `sepBy` pNewlines))
+  term <- withEndline mzero pInlines
+  pNewlines
+  def <- pDef
   return $ Future $ \s -> (evalResult s term, evalResult s def)
 
 pList :: PMonad m => MP m (PR Blocks)
