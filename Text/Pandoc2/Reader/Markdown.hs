@@ -308,6 +308,7 @@ pHeaderATX = try $ do
 
 pDefinitions :: PMonad m => MP m (PR Blocks)
 pDefinitions = try $ do
+  unlessStrict
   lookAhead $ manyTill anyTok pNewline *> pDefSep
   items <- pDefinition `sepBy` pNewlines
   return $ Future $ \s -> definitions (map (evalResult s) items)
