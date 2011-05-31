@@ -50,9 +50,9 @@ pBlockSep :: PMonad m => P t m ()
 pBlockSep = try (getState >>= sequenceA . sBlockSep) >> return ()
 
 -- | Run a parser and handle messages.
-parseWith :: PMonad m => POptions -> P t m a -> [t] -> m a
+parseWith :: PMonad m => POptions -> P t m (PR a) -> [t] -> m a
 parseWith opts p t = do
-  res <- runParserT p pstate{ sOptions = opts } "input" t
+  res <- runParserT (p >>= finalResult) pstate{ sOptions = opts } "input" t
   case res of
        Right x -> return x
        Left s  -> fail (show s)
