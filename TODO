@@ -62,16 +62,7 @@ internal link:
 
 ---
 
-Better definition list syntax:
-
-~ my term
-
-    My definition
-
-    Second par
-
-~ my other term
-    My def
-~ tight
-    list
+Definition lists - keep old syntax, but it's SLOW to parse.
+Benchmark goes from .351 to .46 just adding the definition
+lists.  Think of ways to speed up?
 
