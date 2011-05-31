@@ -318,12 +318,12 @@ pDef :: PMonad m => MP m (PR Blocks)
 pDef = withBlockSep indentSpace $ withEndline (notFollowedBy pDefSep)
        $ pDefSep *> (mconcat <$> pBlock `sepBy` pNewlines)
 
-pDefinition :: PMonad m => MP m (PR (Inlines, Blocks))
+pDefinition :: PMonad m => MP m (PR (Inlines, [Blocks]))
 pDefinition = try $ do
   term <- withEndline mzero pInlines
   pNewlines
-  def <- pDef
-  return $ Future $ \s -> (evalResult s term, evalResult s def)
+  defs <- pDef `sepBy` pNewlines
+  return $ Future $ \s -> (evalResult s term, map (evalResult s) defs)
 
 pList :: PMonad m => MP m (PR Blocks)
 pList = do
