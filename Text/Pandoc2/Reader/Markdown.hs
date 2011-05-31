@@ -307,7 +307,8 @@ pHeaderATX = try $ do
   header level . trimInlines <$$> mconcat <$> many1Till pInline closeATX
 
 pDefinitions :: PMonad m => MP m (PR Blocks)
-pDefinitions = do
+pDefinitions = try $ do
+  lookAhead $ manyTill anyTok pNewline *> pDefSep
   items <- pDefinition `sepBy` pNewlines
   return $ Future $ \s -> definitions (map (evalResult s) items)
 
