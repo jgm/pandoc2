@@ -267,7 +267,7 @@ pInlineNote = note . para
 
 pBlock :: PMonad m => MP m (PR Blocks)
 pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
-                 pHeader, pHtmlBlock, pDefinitions, pPara]
+                 pHeader, pHtmlBlock, {- pDefinitions, -} pPara]
 
 pBlocks :: PMonad m => MP m (PR Blocks)
 pBlocks = option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
@@ -291,7 +291,8 @@ pHeaderSetext :: PMonad m => MP m (PR Blocks)
 pHeaderSetext = try $ do
   -- lookahead to speed up parsing
   lookAhead $ skipMany nonNewline *> pNewline *> setextChar
-  ils <- trimInlines <$$> mconcat <$> many1Till pInline pNewline
+  ils <- trimInlines <$$> withEndline mzero pInlines
+  pNewline
   c <- setextChar
   skipMany (satisfyTok (== c))
   eol

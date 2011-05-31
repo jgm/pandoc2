@@ -60,4 +60,18 @@ In section !my-header,
 internal link:
 [See section !my](!my)
 
+---
+
+Better definition list syntax:
+
+~ my term
+
+    My definition
+
+    Second par
+
+~ my other term
+    My def
+~ tight
+    list
 
