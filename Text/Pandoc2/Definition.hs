@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings,
    MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
-module Text.Pandoc.Definition
+module Text.Pandoc2.Definition
        ( Block(..)
        , Inline(..)
        , Blocks

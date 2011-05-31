@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings,
    MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
-module Text.Pandoc.Builder
+module Text.Pandoc2.Builder
 where
-import Text.Pandoc.Definition
+import Text.Pandoc2.Definition
 import qualified Data.Text as T
 import Data.Text (Text)
 
--- Pandoc builder DSL
+-- Pandoc2 builder DSL
 
 txt :: Text -> Inlines
 txt = single . Txt

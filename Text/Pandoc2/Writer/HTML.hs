@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving,
     TypeSynonymInstances #-}
-module Text.Pandoc.Writer.HTML (docToHtml) where
-import Text.Pandoc.Definition
-import Text.Pandoc.Builder ((<+>), rawInline)
-import Text.Pandoc.Shared (textify, POptions(..))
+module Text.Pandoc2.Writer.HTML (docToHtml) where
+import Text.Pandoc2.Definition
+import Text.Pandoc2.Builder ((<+>), rawInline)
+import Text.Pandoc2.Shared (textify, POptions(..))
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A

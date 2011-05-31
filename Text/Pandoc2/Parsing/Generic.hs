@@ -1,4 +1,4 @@
-module Text.Pandoc.Parsing.Generic
+module Text.Pandoc2.Parsing.Generic
 where
 import Text.Parsec
 import Control.Applicative ((<$>), (*>))

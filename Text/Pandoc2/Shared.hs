@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Text.Pandoc.Shared where
-import Text.Pandoc.Definition
+module Text.Pandoc2.Shared where
+import Text.Pandoc2.Definition
 import Data.Data
 import Data.Monoid
 import qualified Data.Text.Encoding as E

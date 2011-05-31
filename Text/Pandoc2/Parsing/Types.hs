@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances, ImpredicativeTypes, OverloadedStrings #-}
-module Text.Pandoc.Parsing.Types
+module Text.Pandoc2.Parsing.Types
 where
-import Text.Pandoc.Definition
-import Text.Pandoc.Shared
+import Text.Pandoc2.Definition
+import Text.Pandoc2.Shared
 import Data.String
 import qualified Data.Map as M
 import Data.Monoid

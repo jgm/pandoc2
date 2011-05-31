@@ -31,17 +31,17 @@ Library
   Ghc-Options:   -Wall -fno-warn-unused-do-bind
   Ghc-Prof-Options: -auto-all -caf-all
 
-  Exposed-Modules: Text.Pandoc,
-                   Text.Pandoc.Definition,
-                   Text.Pandoc.Builder,
-                   Text.Pandoc.Shared,
-                   Text.Pandoc.Reader.Markdown,
-                   Text.Pandoc.Writer.HTML
+  Exposed-Modules: Text.Pandoc2,
+                   Text.Pandoc2.Definition,
+                   Text.Pandoc2.Builder,
+                   Text.Pandoc2.Shared,
+                   Text.Pandoc2.Reader.Markdown,
+                   Text.Pandoc2.Writer.HTML
 
-  Other-Modules:   Text.Pandoc.Parsing.Types,
-                   Text.Pandoc.Parsing.Generic,
-                   Text.Pandoc.Parsing.PMonad,
-                   Text.Pandoc.Parsing.TextTok
+  Other-Modules:   Text.Pandoc2.Parsing.Types,
+                   Text.Pandoc2.Parsing.Generic,
+                   Text.Pandoc2.Parsing.PMonad,
+                   Text.Pandoc2.Parsing.TextTok
 
 Executable pandoc2
   Main-Is:            pandoc2.hs

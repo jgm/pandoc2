@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Text.Pandoc.Parsing.PMonad
+module Text.Pandoc2.Parsing.PMonad
 where
-import Text.Pandoc.Parsing.Types
-import Text.Pandoc.Shared
+import Text.Pandoc2.Parsing.Types
+import Text.Pandoc2.Shared
 import Text.Parsec hiding (space, newline)
 import Control.Applicative ((<$>), (<$), (<*), (*>))
 import Data.Traversable (sequenceA)

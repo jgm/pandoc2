@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Text.Pandoc.Reader.Markdown (markdownDoc, markdownInlines)
+module Text.Pandoc2.Reader.Markdown (markdownDoc, markdownInlines)
 where
-import Text.Pandoc.Definition
-import Text.Pandoc.Shared
-import Text.Pandoc.Parsing.Generic
-import Text.Pandoc.Parsing.Types
-import Text.Pandoc.Parsing.PMonad
-import Text.Pandoc.Parsing.TextTok
-import Text.Pandoc.Builder
+import Text.Pandoc2.Definition
+import Text.Pandoc2.Shared
+import Text.Pandoc2.Parsing.Generic
+import Text.Pandoc2.Parsing.Types
+import Text.Pandoc2.Parsing.PMonad
+import Text.Pandoc2.Parsing.TextTok
+import Text.Pandoc2.Builder
 import Data.Monoid
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M

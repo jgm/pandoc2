@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
-module Text.Pandoc.Parsing.TextTok
+module Text.Pandoc2.Parsing.TextTok
 where
-import Text.Pandoc.Definition
-import Text.Pandoc.Shared
-import Text.Pandoc.Parsing.Types
-import Text.Pandoc.Parsing.PMonad
-import Text.Pandoc.Parsing.Generic
+import Text.Pandoc2.Definition
+import Text.Pandoc2.Shared
+import Text.Pandoc2.Parsing.Types
+import Text.Pandoc2.Parsing.PMonad
+import Text.Pandoc2.Parsing.Generic
 import Control.Monad (guard, mzero)
 import Data.Monoid
 import Text.HTML.TagSoup.Entity (lookupEntity)

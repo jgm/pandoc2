@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-import Text.Pandoc
+import Text.Pandoc2
 import Text.Blaze.Renderer.Utf8
 import qualified Data.ByteString as B
 import System.Environment
