@@ -665,7 +665,7 @@ pMathDisplay = try (verbTextTill normal mark)
 
 pMathInline :: PMonad m => MP m Text
 pMathInline = try $ do
-  words' <- sepBy1 pMathWord (skipMany1 $ pSp <|> pEndline)
+  words' <- sepBy pMathWord (skipMany1 $ pSp <|> pEndline)
   sym '$'
   let digitTok (SYM d) = isDigit d
       digitTok _       = False
