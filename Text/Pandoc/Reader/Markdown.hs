@@ -267,7 +267,7 @@ pInlineNote = note . para
 
 pBlock :: PMonad m => MP m (PR Blocks)
 pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
-                 pHeader, pHtmlBlock, {- pDefinitions, -} pPara]
+                 pHeader, pHtmlBlock, pDefinitions, pPara]
 
 pBlocks :: PMonad m => MP m (PR Blocks)
 pBlocks = option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
