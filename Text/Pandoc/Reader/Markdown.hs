@@ -25,14 +25,12 @@ markdownDoc :: PMonad m => POptions -> Text -> m Blocks
 markdownDoc opts t = parseWith opts pDoc $ tokenize opts t
 
 markdownInlines :: PMonad m => POptions -> Text -> m Inlines
-markdownInlines opts t = parseWith opts (pInlines >>= finalResult)
-                       $ tokenize opts t
+markdownInlines opts t = parseWith opts pInlines $ tokenize opts t
 
 -- Document-level parsers
 
-pDoc :: PMonad m => MP m Blocks
+pDoc :: PMonad m => MP m (PR Blocks)
 pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof
-    >>= finalResult
 
 -- Inline parsers
 
