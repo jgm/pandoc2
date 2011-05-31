@@ -14,7 +14,7 @@ import qualified Data.Text.IO as T
 import Text.Parsec hiding (space, newline)
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*>), Applicative(..))
 
 data Result a = Success [Message] a
               | Failure String
@@ -84,6 +84,16 @@ type P t m a = ParsecT [t] (PState t m) m a
 
 data PR a = Const a | Future (PReferences -> a)
 
+instance Functor PR where
+  fmap f (Const x)  = Const (f x)
+  fmap f (Future x) = Future (f . x)
+
+instance Applicative PR where
+  pure                      = Const
+  (Const f)  <*> x          = fmap f x
+  (Future f) <*> (Const x)  = Future $ \s -> (f s) x
+  (Future f) <*> (Future x) = Future $ \s -> (f s) (x s)
+
 instance Show (PR a) where
   show _ = "<PR value>"  -- Show needs to be defined for notFollowedBy'
 
@@ -97,13 +107,9 @@ instance Monoid a => Monoid (PR a) where
 instance IsString (PR Inlines) where
   fromString = Const . fromString
 
-liftResult :: (a -> b) -> PR a -> PR b
-liftResult f (Const x)  = Const (f x)
-liftResult f (Future g) = Future (f . g)
-
 infix 3 <$$>
 (<$$>) :: Monad m => (a -> b) -> m (PR a) -> m (PR b)
-(<$$>) = liftM . liftResult
+(<$$>) = liftM . fmap
 
 evalResult :: PReferences -> PR a -> a
 evalResult _    (Const x)  = x

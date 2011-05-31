@@ -16,7 +16,8 @@ import Data.Text (Text)
 import Data.Char (toLower, isDigit, ord)
 import Text.Parsec hiding (sepBy, space, newline)
 import Control.Monad
-import Control.Applicative ((<$>), (<$), (*>), (<*))
+import Control.Applicative ((<$>), (<$), (*>), (<*), liftA2)
+import Data.Traversable (sequenceA)
 import Text.HTML.TagSoup
 
 type MP m a = P Tok m a
@@ -311,7 +312,7 @@ pDefinitions = try $ do
   unlessStrict
   lookAhead $ manyTill anyTok pNewline *> pDefSep
   items <- pDefinition `sepBy` pNewlines
-  return $ Future $ \s -> definitions (map (evalResult s) items)
+  return $ definitions <$> sequenceA items
 
 pDefSep :: PMonad m => MP m ()
 pDefSep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
@@ -325,7 +326,7 @@ pDefinition = try $ do
   term <- withEndline mzero pInlines
   pNewlines
   defs <- pDef `sepBy` pNewlines
-  return $ Future $ \s -> (evalResult s term, map (evalResult s) defs)
+  return $ liftA2 (,) term (sequenceA defs)
 
 pList :: PMonad m => MP m (PR Blocks)
 pList = do
@@ -335,9 +336,8 @@ pList = do
                    BulletMarker _     -> Bullet
                    NumberMarker n s d -> Ordered (fromMaybe 1 n) s d
                    _                  -> error $ show marker <> " not supported"
-  return $ Future $ \s ->
-    single $ List ListAttr{ listTight = and tights, listStyle = style }
-           $ map (evalResult s) bs
+  return $ (single . List ListAttr{ listTight = and tights, listStyle = style })
+        <$> sequenceA bs
 
 pListItem :: PMonad m
           => ListMarker
