@@ -269,7 +269,7 @@ pInlineNote = note . para
 
 pBlock :: PMonad m => MP m (PR Blocks)
 pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
-                 pHeader, pHtmlBlock, pPara]
+                 pHeader, pHtmlBlock, pDefinitions, pPara]
 
 pBlocks :: PMonad m => MP m (PR Blocks)
 pBlocks = option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
@@ -306,6 +306,20 @@ pHeaderATX = try $ do
   sps
   let closeATX = try $ skipMany (sym '#') *> eol
   header level . trimInlines <$$> mconcat <$> many1Till pInline closeATX
+
+pDefinitions :: PMonad m => MP m (PR Blocks)
+pDefinitions = do
+  items <- pDefinition `sepBy` (pNewlines *> notFollowedBy spnl)
+  return $ Future $ \s -> definitions (map (evalResult s) items)
+
+pDefinition :: PMonad m => MP m (PR (Inlines, [Blocks]))
+pDefinition = try $ do
+  term <- withEndline mzero pInlines
+  let sep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
+  -- maybe : let el  = indentSpace
+  defs <- withBlockSep sep $ {- withEndline el $ -} pNewline *>
+             many1 (mconcat <$> (pBlock `sepBy` pNewlines))
+  return $ Future $ \s -> (evalResult s term, map (evalResult s) defs)
 
 pList :: PMonad m => MP m (PR Blocks)
 pList = do

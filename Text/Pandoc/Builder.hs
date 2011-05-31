@@ -89,6 +89,9 @@ bulletListLoose :: [Blocks] -> Blocks
 bulletListLoose =
   single . List ListAttr{ listTight = False, listStyle = Bullet }
 
+definitions :: [(Inlines, [Blocks])] -> Blocks
+definitions = single . Definitions
+
 header :: Int -> Inlines -> Blocks
 header n = single . Header n
 
