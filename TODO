@@ -5,12 +5,12 @@ x fenced code blocks
 x fancy list numbers
 x tex math
 x non-strict treatment of html
-_ example lists - rethink syntax to avoid clash w/ citations
-_ definition lists
+_ definition lists - tight/loose distinction, test
+_ example lists - rethink syntax to avoid clash w/ citations?
 _ tex math macros
 _ tex math output (texmath reader, mathml, js)
 _ inline tex?
-_ tables! (rethink here? use org-mode tables?)
+_ tables
 _ header identifiers -- or something better?
 _ super/subscript?
 _ strikeout?
