@@ -75,10 +75,10 @@ blockToHtml (List attr bs) =
               where ol = addStart start $ addStyle sty $ H.ol
 blockToHtml (Definitions items) = do
   let toTerm ils = inlinesToHtml ils
-  let toDefs bs  = mconcat $ map (\b -> nl <> blocksToHtml b) bs
+  let toDef bs   = (H.dd <$> nl <> blocksToHtml bs) <> nl
   let toItem (term, defs) = (H.dt <$> toTerm term)
-                         <> nl <> (H.dd <$> toDefs defs)
-  H.dl <$> nl <> mconcat (map toItem items) <> nl
+                         <> nl <> (mconcat $ map toDef defs)
+  H.dl <$> nl <> mconcat (map toItem items)
 blockToHtml (Code attr t) = return $ addAttributes attr
                                    $ H.pre $ H.code $ toHtml t
 blockToHtml (RawBlock (Format "html") t) = return $ preEscapedText t

@@ -310,13 +310,18 @@ pDefinitions = do
   items <- pDefinition `sepBy` (pNewlines *> notFollowedBy spnl)
   return $ Future $ \s -> definitions (map (evalResult s) items)
 
+pDefSep :: PMonad m => MP m ()
+pDefSep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
+
+pDef :: PMonad m => MP m (PR Blocks)
+pDef = withBlockSep indentSpace $ withEndline (notFollowedBy pDefSep)
+       $ pDefSep *> (mconcat <$> pBlock `sepBy` pNewlines)
+
 pDefinition :: PMonad m => MP m (PR (Inlines, [Blocks]))
 pDefinition = try $ do
   term <- withEndline mzero pInlines
-  let sep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
-  -- maybe : let el  = indentSpace
-  defs <- withBlockSep sep $ {- withEndline el $ -} pNewline *>
-             many1 (mconcat <$> (pBlock `sepBy` pNewlines))
+  pNewlines
+  defs <- pDef `sepBy` pNewlines
   return $ Future $ \s -> (evalResult s term, map (evalResult s) defs)
 
 pList :: PMonad m => MP m (PR Blocks)
