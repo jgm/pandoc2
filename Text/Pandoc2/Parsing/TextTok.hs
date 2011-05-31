@@ -152,7 +152,7 @@ indentSpace = try $ do
 -- | Parse multiple block-separating line breaks. Return number of
 -- newlines parsed.
 pNewlines :: PMonad m => P Tok m Int
-pNewlines = length <$> many1 pNewline
+pNewlines = length <$> many1 pNewline <* notFollowedBy spnl
 
 -- | Parse a block-separating line break.
 pNewline :: PMonad m => P Tok m ()

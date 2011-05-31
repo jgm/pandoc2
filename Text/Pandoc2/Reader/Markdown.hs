@@ -308,7 +308,7 @@ pHeaderATX = try $ do
 
 pDefinitions :: PMonad m => MP m (PR Blocks)
 pDefinitions = do
-  items <- pDefinition `sepBy` (pNewlines *> notFollowedBy spnl)
+  items <- pDefinition `sepBy` pNewlines
   return $ Future $ \s -> definitions (map (evalResult s) items)
 
 pDefSep :: PMonad m => MP m ()
@@ -347,8 +347,7 @@ pListItem marker = try $ do
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ sps *> listStart) $ do
       bs <- mconcat
-            <$> (pBlock `sepBy` (pNewlines *> notFollowedBy spnl))
-                <|> return mempty
+            <$> (pBlock `sepBy` pNewlines) <|> return mempty
       if n > 1
          then return (False, bs)   -- not a tight list
          else case toItems (evalResult nullReferences bs) of
@@ -546,7 +545,7 @@ pNote = try $ do
   k <- pNoteMarker
   sym ':'
   bs <- withBlockSep (indentSpace <|> eol) $ do
-          mconcat <$> (pBlock `sepBy` (pNewlines *> notFollowedBy spnl))
+          mconcat <$> (pBlock `sepBy` pNewlines)
   refs <- getReferences
   setReferences refs{ rNotes = M.insert k bs $ rNotes refs }
   return mempty
