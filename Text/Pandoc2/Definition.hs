@@ -39,8 +39,7 @@ data Block = Para Inlines
            | Quote Blocks
            | Code Attr Text
            | List ListAttr [Blocks]
-           | Definitions [(Inlines, [Blocks])]  -- ^ Each item is a pair
-                     -- consisting of a term and one or more definitions
+           | Definitions [(Inlines, Blocks)]
            | Header Int Inlines
            | RawBlock Format Text
            | HRule

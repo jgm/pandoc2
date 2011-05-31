@@ -74,10 +74,9 @@ blockToHtml (List attr bs) =
            Ordered start sty _ -> ol   <$> nl <> items
               where ol = addStart start $ addStyle sty $ H.ol
 blockToHtml (Definitions items) = do
-  let toTerm ils = inlinesToHtml ils
+  let toTerm ils = H.dt <$> inlinesToHtml ils
   let toDef bs   = (H.dd <$> nl <> blocksToHtml bs) <> nl
-  let toItem (term, defs) = (H.dt <$> toTerm term)
-                         <> nl <> (mconcat $ map toDef defs)
+  let toItem (term, def) = toTerm term <> nl <> toDef def
   H.dl <$> nl <> mconcat (map toItem items)
 blockToHtml (Code attr t) = return $ addAttributes attr
                                    $ H.pre $ H.code $ toHtml t
