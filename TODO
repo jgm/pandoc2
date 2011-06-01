@@ -12,7 +12,7 @@ _ example lists - rethink syntax to avoid clash w/ citations?
 _ tex math macros
 _ tex math output (texmath reader, mathml, js)
 _ inline tex?
-_ tables
+_ tables - use structure with cell combinators?
 _ header identifiers -- or something better?
 _ super/subscript?
 _ strikeout?
