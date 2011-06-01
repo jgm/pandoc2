@@ -5,7 +5,7 @@ x fenced code blocks
 x fancy list numbers
 x tex math
 x non-strict treatment of html
-_ definition lists - tight/loose distinction, test
+x definition lists - tight/loose distinction, test
 _ move para-to-plain transform for all lists to markdown,
   remove tight list attribute
 _ example lists - rethink syntax to avoid clash w/ citations?

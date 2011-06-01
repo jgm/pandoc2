@@ -330,7 +330,7 @@ pDef = try $ do
   startNls <- option 0 pNewlines
   pDefSep
   bs <- withBlockSep (indentSpace <|> eol)
-      $ withEndline (notFollowedBy pDefSep)
+      $ withEndline indentSpace
       $ pBlock `sepBy` pNewlines
   return (startNls <= 1 && length bs == 1, mconcat bs)
 
