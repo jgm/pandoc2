@@ -10,7 +10,6 @@ module Text.Pandoc2.Definition
        , Format(..)
        , MathType(..)
        , QuoteType(..)
-       , ListAttr(..)
        , ListNumberStyle(..)
        , ListNumberDelim(..)
        , ListStyle(..)
@@ -38,7 +37,7 @@ data Block = Para Inlines
            | Plain Inlines
            | Quote Blocks
            | Code Attr Text
-           | List ListAttr [Blocks]
+           | List ListStyle [Blocks]
            | Definitions [(Inlines, [Blocks])]  -- ^ Each item is a pair
                      -- consisting of a term and one or more definitions
            | Header Int Inlines
@@ -96,10 +95,6 @@ newtype Attr = Attr [(Text, Text)]
 
 nullAttr :: Attr
 nullAttr = Attr []
-
-data ListAttr = ListAttr { listTight  :: Bool
-                         , listStyle  :: ListStyle }
-               deriving (Show, Read, Data, Ord, Eq, Typeable)
 
 data ListStyle = Bullet | Ordered Int ListNumberStyle ListNumberDelim
                deriving (Show, Read, Data, Ord, Eq, Typeable)
