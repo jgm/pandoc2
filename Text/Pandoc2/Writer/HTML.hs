@@ -11,7 +11,6 @@ import Data.Monoid
 import qualified Data.Foldable as F
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
-import Data.Generics.Uniplate.Operations (transformBi)
 import Data.List (intersperse)
 import Control.Monad.State
 import Control.Applicative
@@ -52,13 +51,8 @@ blockToHtml :: Block -> W
 blockToHtml (Para ils) = H.p <$> inlinesToHtml ils
 blockToHtml (Plain ils) = inlinesToHtml ils
 blockToHtml (Quote bs) = H.blockquote <$> nl <> blocksToHtml bs
-blockToHtml (List attr bs) =
-  let paraToPlain (Para xs) = Plain xs
-      paraToPlain x         = x
-      bs' = if listTight attr
-               then transformBi paraToPlain bs
-               else bs
-      items = F.foldMap (\b -> (H.li <$> blocksToHtml b) <> nl) bs'
+blockToHtml (List style bs) =
+  let items = F.foldMap (\b -> (H.li <$> blocksToHtml b) <> nl) bs
       addStart 1 t = t
       addStart n t = t ! A.start (toValue n)
       addStyle DefaultStyle t = t
@@ -69,7 +63,7 @@ blockToHtml (List attr bs) =
                                                    LowerRoman -> "i"
                                                    UpperRoman -> "I"
                                                    _          -> "1")
-  in  case listStyle attr of
+  in  case style of
            Bullet              -> H.ul <$> nl <> items
            Ordered start sty _ -> ol   <$> nl <> items
               where ol = addStart start $ addStyle sty $ H.ol

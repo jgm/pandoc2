@@ -19,7 +19,6 @@ import Control.Monad
 import Control.Applicative ((<$>), (<$), (*>), (<*), liftA2)
 import Data.Traversable (sequenceA)
 import Text.HTML.TagSoup
-import Data.Generics.Uniplate.Operations (transformBi)
 
 type MP m a = P Tok m a
 
@@ -313,14 +312,17 @@ pDefinitions = try $ do
   unlessStrict
   lookAhead $ manyTill anyTok pNewlines *> pDefSep
   (tights, items) <- unzip <$> many1 pDefinition
-  let items' = if and tights
-                  then transformBi paraToPlain <$> items
-                  else items
-  return $ definitions <$> sequenceA items'
+  let items' = sequenceA items
+  let items'' = if and tights
+                   then map (\(t,d) -> (t, map paraToPlain d)) <$> items'
+                   else items'
+  return $ definitions <$> items''
 
-paraToPlain :: Block -> Block
-paraToPlain (Para xs) = Plain xs
-paraToPlain x         = x
+paraToPlain :: Blocks -> Blocks
+paraToPlain = mapItems go
+  where go :: Block -> Blocks
+        go (Para xs)  = plain xs
+        go x          = single x
 
 pDefSep :: PMonad m => MP m ()
 pDefSep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
@@ -349,8 +351,11 @@ pList = do
                    BulletMarker _     -> Bullet
                    NumberMarker n s d -> Ordered (fromMaybe 1 n) s d
                    _                  -> error $ show marker <> " not supported"
-  return $ (single . List ListAttr{ listTight = and tights, listStyle = style })
-        <$> sequenceA bs
+  let bs' = sequenceA bs
+  let bs'' = if and tights
+                then map paraToPlain <$> bs'
+                else bs'
+  return $ single . List style <$> bs''
 
 pListItem :: PMonad m
           => ListMarker
