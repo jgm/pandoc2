@@ -1,9 +1,11 @@
-{-# LANGUAGE FlexibleInstances, ImpredicativeTypes, OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, ImpredicativeTypes, DeriveDataTypeable,
+    OverloadedStrings #-}
 module Text.Pandoc2.Parsing.Types
 where
 import Text.Pandoc2.Definition
 import Text.Pandoc2.Shared
 import Data.String
+import Data.Data
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad
@@ -59,6 +61,7 @@ data PReferences =
   PReferences { rLinks      :: M.Map Key Source
               , rNotes      :: M.Map Text (PR Blocks)
               }
+  deriving (Data, Typeable)
 
 nullReferences :: PReferences
 nullReferences = PReferences { rLinks = M.empty
@@ -83,6 +86,7 @@ setReferences refs = modifyState $ \st -> st{ sReferences = refs }
 type P t m a = ParsecT [t] (PState t m) m a
 
 data PR a = Const a | Future (PReferences -> a)
+          deriving (Data, Typeable)
 
 instance Functor PR where
   fmap f (Const x)  = Const (f x)

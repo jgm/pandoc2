@@ -19,6 +19,7 @@ import Control.Monad
 import Control.Applicative ((<$>), (<$), (*>), (<*), liftA2)
 import Data.Traversable (sequenceA)
 import Text.HTML.TagSoup
+import Data.Generics.Uniplate.Operations (transformBi)
 
 type MP m a = P Tok m a
 
@@ -310,23 +311,35 @@ pHeaderATX = try $ do
 pDefinitions :: PMonad m => MP m (PR Blocks)
 pDefinitions = try $ do
   unlessStrict
-  lookAhead $ manyTill anyTok pNewline *> pDefSep
-  items <- pDefinition `sepBy` pNewlines
-  return $ definitions <$> sequenceA items
+  lookAhead $ manyTill anyTok pNewlines *> pDefSep
+  (tights, items) <- unzip <$> many1 pDefinition
+  let items' = if and tights
+                  then transformBi paraToPlain <$> items
+                  else items
+  return $ definitions <$> sequenceA items'
+
+paraToPlain :: Block -> Block
+paraToPlain (Para xs) = Plain xs
+paraToPlain x         = x
 
 pDefSep :: PMonad m => MP m ()
 pDefSep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
 
-pDef :: PMonad m => MP m (PR Blocks)
-pDef = withBlockSep indentSpace $ withEndline (notFollowedBy pDefSep)
-       $ pDefSep *> (mconcat <$> pBlock `sepBy` pNewlines)
+pDef :: PMonad m => MP m (Bool, PR Blocks)
+pDef = try $ do
+  startNls <- option 0 pNewlines
+  pDefSep
+  bs <- withBlockSep (indentSpace <|> eol)
+      $ withEndline (notFollowedBy pDefSep)
+      $ pBlock `sepBy` pNewlines
+  return (startNls <= 1 && length bs == 1, mconcat bs)
 
-pDefinition :: PMonad m => MP m (PR (Inlines, [Blocks]))
+pDefinition :: PMonad m => MP m (Bool, PR (Inlines, [Blocks]))
 pDefinition = try $ do
+  startNls <- option 0 pNewlines
   term <- withEndline mzero pInlines
-  pNewlines
-  defs <- pDef `sepBy` pNewlines
-  return $ liftA2 (,) term (sequenceA defs)
+  (tights, defs) <- unzip <$> many1 pDef
+  return (startNls <= 1 && and tights, liftA2 (,) term (sequenceA defs))
 
 pList :: PMonad m => MP m (PR Blocks)
 pList = do
