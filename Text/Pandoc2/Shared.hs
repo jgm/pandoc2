@@ -1,8 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
 
 module Text.Pandoc2.Shared where
 import Text.Pandoc2.Definition
 import Data.Data
+import Data.Char
 import Data.Monoid
 import qualified Data.Text.Encoding as E
 import qualified Data.ByteString.Char8 as B8
@@ -12,7 +13,6 @@ import Data.Text (Text)
 import Network.URI ( escapeURIString, isAllowedInURI )
 import qualified Data.Text as T
 import Data.Generics.Uniplate.Data
-import Data.Char (toUpper, isLower)
 
 data LogLevel = INFO | WARNING | ERROR
               deriving (Ord, Eq, Show, Read, Data, Typeable)
@@ -65,10 +65,24 @@ show' = fromString . show
 textify :: Inlines -> Text
 textify = T.concat . map extractText . universeBi
   where extractText :: Inline -> Text
-        extractText (Txt t)   = t
-        extractText Sp        = T.singleton ' '
-        extractText LineBreak = T.singleton ' '
-        extractText _         = T.singleton ' '
+        extractText (Txt t)    = t
+        extractText (Verbatim _ t) = t
+        extractText (Math _ t) = t
+        extractText (Quoted DoubleQuoted ils) = "\"" <> textify ils <> "\""
+        extractText (Quoted SingleQuoted ils) = "'"  <> textify ils <> "'"
+        extractText Sp         = T.singleton ' '
+        extractText LineBreak  = T.singleton ' '
+        extractText _          = mempty
+
+inlinesToIdentifier :: Inlines -> Text
+inlinesToIdentifier = T.dropWhile (not . isAlpha)
+  . T.intercalate "-"
+  . T.words
+  . T.map (nbspToSp . toLower)
+  . T.filter (\c -> isLetter c || isDigit c || c `elem` "_-. ")
+  . textify
+ where nbspToSp '\160'     =  ' '
+       nbspToSp x          =  x
 
 fromRoman :: Text -> Maybe (Int, ListNumberStyle)
 fromRoman t =
