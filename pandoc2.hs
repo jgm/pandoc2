@@ -6,6 +6,7 @@ import System.Environment
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text as T
 import Data.Char (toLower)
+import Data.List (intercalate)
 import System.Console.CmdArgs
 
 main :: IO ()
@@ -17,8 +18,13 @@ main = do
                                                 Normal -> WARNING
                                                 Loud   -> INFO
                            , optTabStop = tab_stop opts
-                           , optStrict  = strict opts
-                           , optSmart   = smart opts
+                           , optExtensions =
+                               if strict opts
+                                  then noExtensions
+                                  else case extension opts of
+                                            Nothing -> allExtensions
+                                            Just es -> setExtensions es
+                           , optSmart = smart opts
                            }
   let convert = markdownDoc poptions' . decodeUtf8
   let render = case map toLower (to opts) of
@@ -34,17 +40,25 @@ data Pandoc2 = Pandoc2
     { tab_stop    :: Int
     , files       :: [FilePath]
     , strict      :: Bool
+    , extension   :: Maybe [PExtension]
     , smart       :: Bool
     , to          :: String
     , from        :: String
     }
     deriving (Data,Typeable,Show,Eq)
 
+{-
+extensionsHelp :: String
+extensionsHelp =
+  "Syntax extensions: " ++ intercalate ", " (map show (enumFrom Footnotes))
+-}
+
 opts = Pandoc2
     { from        = "markdown" &= typ "FORMAT" &= help "Source format"
     , to          = "html" &= typ "FORMAT" &= help "Target format"
     , strict      = def &= help "Disable pandoc's markdown extensions"
-    , smart       = def &= help "Smart typography"
+    , extension   = def &= typ "EXTENSION" &= help "Selectively enable syntax extension"
+    , smart       = def &= help "Enable smart typography"
     , tab_stop    = 4 &= groupname "Options" &= explicit &= name "tab-stop"
                       &= help "Tab stop"
     , files       = def &= args &= typ "FILE.."
@@ -53,4 +67,6 @@ opts = Pandoc2
     verbosity &=
     help "Convert between text formats" &=
     summary "pandoc2 v2, (c) John MacFarlane 2011" &=
-    details []
+    details [ "Input formats:  markdown"
+            , "Output formats: html, native"
+            ]

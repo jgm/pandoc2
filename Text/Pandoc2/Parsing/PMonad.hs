@@ -65,9 +65,6 @@ logM level msg = do
   when (level >= logLevel) $
      lift $ addMessage $ Message level (Just pos) msg
 
-unlessStrict :: PMonad m => P t m ()
-unlessStrict = getOption optStrict >>= guard . not
-
 guardExtension :: PMonad m => PExtension -> P t m ()
 guardExtension ext = getOption optExtensions >>= guard . isEnabled ext
 

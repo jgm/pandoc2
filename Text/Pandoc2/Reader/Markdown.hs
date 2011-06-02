@@ -60,8 +60,10 @@ pVerbatim = try $ do
 pEscaped :: PMonad m => MP m (PR Inlines)
 pEscaped = try $ do
   sym '\\'
-  strict <- getOption optStrict
-  SYM c <- satisfyTok (if strict then isEscapable else isSymTok)
+  exts <- getOption optExtensions
+  SYM c <- satisfyTok $ if isEnabled All_symbols_escapable exts
+                           then isSymTok
+                           else isEscapable
   return $ Const $ ch c
 
 isEscapable :: Tok -> Bool
@@ -212,7 +214,7 @@ pTitle = do
 
 pQuoted :: PMonad m => MP m (PR Inlines)
 pQuoted = try $ do
-  getOption optSmart >>= guard
+  guard =<< getOption optSmart
   SYM c <- satisfyTok isSymTok <|> SYM <$> pEntityChar
   case c of
        '\'' -> option (Const $ ch '\8217') $
@@ -262,7 +264,7 @@ pNoteMarker = try $ do
 
 pInlineNote :: PMonad m => MP m (PR Inlines)
 pInlineNote = note . para
-  <$$> (unlessStrict *> try (sym '^' *> pBracketedInlines))
+  <$$> (guardExtension Footnotes *> try (sym '^' *> pBracketedInlines))
 
 -- Block parsers
 
@@ -309,7 +311,7 @@ pHeaderATX = try $ do
 
 pDefinitions :: PMonad m => MP m (PR Blocks)
 pDefinitions = try $ do
-  unlessStrict
+  guardExtension Definition_lists
   lookAhead $ manyTill anyTok pNewlines *> pDefSep
   (tights, items) <- unzip <$> many1 pDefinition
   let items' = sequenceA items
@@ -421,12 +423,12 @@ bullet = try $ do
 enum :: PMonad m => MP m ListMarker
 enum = try $ do
   n <- nonindentSpace
-  lparen <- option False (True <$ (unlessStrict *> sym '('))
+  lparen <- option False (True <$ (guardExtension Fancy_lists *> sym '('))
   (num, len, sty) <- pListNumber
   delim <- if lparen
               then TwoParens <$ sym ')'
               else (Period <$ sym '.')
-                   <|> (OneParen <$ (unlessStrict *> sym ')'))
+                   <|> (OneParen <$ (guardExtension Fancy_lists *> sym ')'))
   let space' = if sty == UpperAlpha && delim == Period
                   then space *> space  -- to avoid interpreting initials
                   else space
@@ -441,14 +443,16 @@ enum = try $ do
 pListNumber :: PMonad m => MP m (Maybe Int, Int, ListNumberStyle)
                                  -- (number, length, style)
 pListNumber =  pDecimalNumber
-           <|> (unlessStrict *> (pAlphaNumber <|> pRomanNumber))
+           <|> (guardExtension Fancy_lists *> (pAlphaNumber <|> pRomanNumber))
   where pDecimalNumber = do
-          strict <- getOption optStrict
           ds <- many1 digSym <|> count 1 (sym '#')
+          exts <- getOption optExtensions
           case ds of
                [SYM '#']  -> return (Nothing, 1, DefaultStyle)
                _          -> return (Just $ digitsToNum ds, length ds,
-                                      if strict then DefaultStyle else Decimal)
+                                      if isEnabled Fancy_lists exts
+                                         then Decimal
+                                         else DefaultStyle)
         pAlphaNumber = try $ do
           WORD w <- wordTok
           case T.unpack w of
@@ -471,7 +475,7 @@ pListNumber =  pDecimalNumber
         digitsToNum      = read . map fromSym
 
 pCode :: PMonad m => MP m (PR Blocks)
-pCode = pCodeIndented <|> (unlessStrict *> pCodeDelimited)
+pCode = pCodeIndented <|> (guardExtension Delimited_code_blocks *> pCodeDelimited)
 
 pCodeIndented :: PMonad m => MP m (PR Blocks)
 pCodeIndented  = try $ do
@@ -661,7 +665,7 @@ pMathWord = mconcat <$> (many1 mathChunk)
         tokToVerbatim t = toksToVerbatim [t]
 
 pMath :: PMonad m => MP m (PR Inlines)
-pMath = unlessStrict *>
+pMath = guardExtension TeX_math *>
   try (do
     sym '$'
     display <- option False (True <$ sym '$')

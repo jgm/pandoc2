@@ -3,7 +3,7 @@
 module Text.Pandoc2.Writer.HTML (docToHtml) where
 import Text.Pandoc2.Definition
 import Text.Pandoc2.Builder ((<+>), rawInline)
-import Text.Pandoc2.Shared (textify, POptions(..), inlinesToIdentifier, show')
+import Text.Pandoc2.Shared
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -90,9 +90,8 @@ blockToHtml (Header lev ils) = do
              5 -> H.h5
              _ -> H.p
   opts <- wOptions <$> get
-  ht <- if optStrict opts
-           then return h
-           else do
+  ht <- if isEnabled Header_identifiers (optExtensions opts)
+           then do
              let ident = inlinesToIdentifier ils
              idents <- wIdentifiers <$> get
              case M.lookup ident idents of
@@ -102,6 +101,7 @@ blockToHtml (Header lev ils) = do
                   Just n  -> do
                     modify (\s -> s{ wIdentifiers = M.insert ident (n+1) idents })
                     return $ h ! A.id (toValue $ ident <> "-" <> show' n)
+           else return h
   ht <$> inlinesToHtml ils
 blockToHtml HRule = return H.hr
 

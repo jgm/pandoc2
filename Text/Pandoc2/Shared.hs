@@ -28,20 +28,23 @@ instance Show Message where
              show (sourceLine p) ++ " col " ++
              show (sourceColumn p) ++ ")"
 
-data PExtension = ExtSmart
-                | ExtNotes
-                | ExtMath
-                | ExtDelimitedCodeBlocks
-                | ExtMarkdownInHtmlBlocks
-                | ExtFancyListMarkers
-                | ExtDefinitionLists
-                | ExtHeaderIdentifiers
-                deriving (Show, Enum)
+data PExtension = Footnotes
+                | TeX_math
+                | Delimited_code_blocks
+                | Markdown_in_HTML_blocks
+                | Fancy_lists
+                | Definition_lists
+                | Header_identifiers
+                | All_symbols_escapable
+                deriving (Show, Read, Data, Typeable, Enum, Eq)
 
 newtype PExtensions = PExtensions { unPExtensions :: Integer }
 
 noExtensions :: PExtensions
 noExtensions = PExtensions 0
+
+allExtensions :: PExtensions
+allExtensions = PExtensions $ complement 0
 
 setExtensions :: [PExtension] -> PExtensions
 setExtensions =
@@ -56,8 +59,7 @@ data POptions =
   POptions { optLogLevel   :: LogLevel
            , optTabStop    :: Int
            , optExtensions :: PExtensions
-           , optStrict     :: Bool  -- ^ Use standard markdown syntax, no exts.
-           , optSmart      :: Bool  -- ^ Smart typography
+           , optSmart      :: Bool   -- ^ Enable smart typography
            }
 
 -- | Default parser options.
@@ -65,7 +67,6 @@ poptions :: POptions
 poptions = POptions { optLogLevel   = WARNING
                     , optTabStop    = 4
                     , optExtensions = noExtensions
-                    , optStrict     = False
                     , optSmart      = False
                     }
 
