@@ -113,41 +113,41 @@ inlinesToIdentifier = T.dropWhile (not . isAlpha)
 
 fromRoman :: Text -> Maybe (Int, ListNumberStyle)
 fromRoman t =
-  case toRoman' "M" (map toUpper t') of
+  case go "M" (map toUpper t') of
        Nothing  -> Nothing
        Just n   -> Just (n, sty)
      where t'  = T.unpack t
            sty = case t' of
                       (c:_) | isLower c -> LowerRoman
                       _                 -> UpperRoman
-           toRoman' :: String -> String -> Maybe Int
-           toRoman' _   (c:_) | not (c == 'M' || c == 'C' || c == 'D' ||
+           go :: String -> String -> Maybe Int
+           go _   (c:_) | not (c == 'M' || c == 'C' || c == 'D' ||
                                      c == 'L' || c == 'X' || c == 'V' ||
                                      c == 'I') = Nothing
-           toRoman' "M" ('M':xs) = fmap (+ 1000) $ toRoman' "M" xs
-           toRoman' "M" xs       = toRoman' "CM" xs
-           toRoman' "CM" ('C':'M':xs) = fmap (+ 900) $ toRoman' "C" xs
-           toRoman' "CM" xs      = toRoman' "D" xs
-           toRoman' "D" ('D':xs) = fmap (+ 500) $ toRoman' "D" xs
-           toRoman' "D" xs       = toRoman' "CD" xs
-           toRoman' "CD" ('C':'D':xs) = fmap (+ 400) $ toRoman' "XC" xs
-           toRoman' "CD" xs      = toRoman' "C" xs
-           toRoman' "C" ('C':xs) = fmap (+ 100) $ toRoman' "C" xs
-           toRoman' "C" xs       = toRoman' "XC" xs
-           toRoman' "XC" ('X':'C':xs) = fmap (+ 90) $ toRoman' "X" xs
-           toRoman' "XC" xs      = toRoman' "L" xs
-           toRoman' "L" ('L':xs) = fmap (+ 50) $ toRoman' "L" xs
-           toRoman' "L" xs       = toRoman' "XL" xs
-           toRoman' "XL" ('X':'L':xs) = fmap (+ 40) $ toRoman' "V" xs
-           toRoman' "XL" xs      = toRoman' "X" xs
-           toRoman' "X" ('X':xs) = fmap (+ 10) $ toRoman' "X" xs
-           toRoman' "X" xs       = toRoman' "IX" xs
-           toRoman' "IX" ('I':'X':xs) = fmap (+ 9) $ toRoman' "V" xs
-           toRoman' "IX" xs      = toRoman' "V" xs
-           toRoman' "V" ('V':xs) = fmap (+ 10) $ toRoman' "V" xs
-           toRoman' "V" xs       = toRoman' "IV" xs
-           toRoman' "IV" ('I':'V':_) = Just 4
-           toRoman' "IV" xs      = toRoman' "I" xs
-           toRoman' "I" ('I':xs) = fmap (+ 1) $ toRoman' "I" xs
-           toRoman' "I" []       = Just 0
-           toRoman' _   _        = Nothing
+           go "M" ('M':xs) = fmap (+ 1000) $ go "M" xs
+           go "M" xs       = go "CM" xs
+           go "CM" ('C':'M':xs) = fmap (+ 900) $ go "C" xs
+           go "CM" xs      = go "D" xs
+           go "D" ('D':xs) = fmap (+ 500) $ go "D" xs
+           go "D" xs       = go "CD" xs
+           go "CD" ('C':'D':xs) = fmap (+ 400) $ go "XC" xs
+           go "CD" xs      = go "C" xs
+           go "C" ('C':xs) = fmap (+ 100) $ go "C" xs
+           go "C" xs       = go "XC" xs
+           go "XC" ('X':'C':xs) = fmap (+ 90) $ go "X" xs
+           go "XC" xs      = go "L" xs
+           go "L" ('L':xs) = fmap (+ 50) $ go "L" xs
+           go "L" xs       = go "XL" xs
+           go "XL" ('X':'L':xs) = fmap (+ 40) $ go "V" xs
+           go "XL" xs      = go "X" xs
+           go "X" ('X':xs) = fmap (+ 10) $ go "X" xs
+           go "X" xs       = go "IX" xs
+           go "IX" ('I':'X':xs) = fmap (+ 9) $ go "V" xs
+           go "IX" xs      = go "V" xs
+           go "V" ('V':xs) = fmap (+ 10) $ go "V" xs
+           go "V" xs       = go "IV" xs
+           go "IV" ('I':'V':_) = Just 4
+           go "IV" xs      = go "I" xs
+           go "I" ('I':xs) = fmap (+ 1) $ go "I" xs
+           go "I" []       = Just 0
+           go _   _        = Nothing
