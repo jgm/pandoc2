@@ -68,6 +68,9 @@ logM level msg = do
 unlessStrict :: PMonad m => P t m ()
 unlessStrict = getOption optStrict >>= guard . not
 
+guardExtension :: PMonad m => PExtension -> P t m ()
+guardExtension ext = getOption optExtensions >>= guard . isEnabled ext
+
 -- | Parse contents of a file with the specified parser.
 parseIncludeFile :: PMonad m
                  => (Text -> [t]) -> FilePath -> P t m a -> P t m a
