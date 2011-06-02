@@ -3,6 +3,7 @@
 module Text.Pandoc2.Shared where
 import Text.Pandoc2.Definition
 import Data.Data
+import Data.Bits
 import Data.Char
 import Data.Monoid
 import qualified Data.Text.Encoding as E
@@ -27,19 +28,45 @@ instance Show Message where
              show (sourceLine p) ++ " col " ++
              show (sourceColumn p) ++ ")"
 
+data PExtension = ExtSmart
+                | ExtNotes
+                | ExtMath
+                | ExtDelimitedCodeBlocks
+                | ExtMarkdownInHtmlBlocks
+                | ExtFancyListMarkers
+                | ExtDefinitionLists
+                | ExtHeaderIdentifiers
+                deriving (Show, Enum)
+
+newtype PExtensions = PExtensions { unPExtensions :: Integer }
+
+noExtensions :: PExtensions
+noExtensions = PExtensions 0
+
+setExtensions :: [PExtension] -> PExtensions
+setExtensions =
+  foldl (\(PExtensions x) e -> PExtensions (setBit x $ fromEnum e))
+    noExtensions
+
+isEnabled :: PExtension -> PExtensions -> Bool
+isEnabled ext opts =
+  testBit (unPExtensions opts) (fromEnum ext)
+
 data POptions =
-  POptions { optLogLevel :: LogLevel
-           , optTabStop  :: Int
-           , optStrict   :: Bool  -- ^ Use standard markdown syntax, no exts.
-           , optSmart    :: Bool  -- ^ Smart typography
+  POptions { optLogLevel   :: LogLevel
+           , optTabStop    :: Int
+           , optExtensions :: PExtensions
+           , optStrict     :: Bool  -- ^ Use standard markdown syntax, no exts.
+           , optSmart      :: Bool  -- ^ Smart typography
            }
 
 -- | Default parser options.
 poptions :: POptions
-poptions = POptions { optLogLevel = WARNING
-                    , optTabStop  = 4
-                    , optStrict   = False
-                    , optSmart    = False
+poptions = POptions { optLogLevel   = WARNING
+                    , optTabStop    = 4
+                    , optExtensions = noExtensions
+                    , optStrict     = False
+                    , optSmart      = False
                     }
 
 -- | Concatenate and trim inlines.
