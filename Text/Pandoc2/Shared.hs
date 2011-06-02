@@ -55,11 +55,17 @@ isEnabled :: PExtension -> PExtensions -> Bool
 isEnabled ext opts =
   testBit (unPExtensions opts) (fromEnum ext)
 
+data HTMLMathMethod = PlainMath
+                    | MathML
+                    | TeXMath
+                    deriving (Show, Read, Eq, Data, Typeable)
+
 data POptions =
   POptions { optLogLevel   :: LogLevel
            , optTabStop    :: Int
            , optExtensions :: PExtensions
            , optSmart      :: Bool   -- ^ Enable smart typography
+           , optMathMethod :: HTMLMathMethod
            }
 
 -- | Default parser options.
@@ -68,6 +74,7 @@ poptions = POptions { optLogLevel   = WARNING
                     , optTabStop    = 4
                     , optExtensions = noExtensions
                     , optSmart      = False
+                    , optMathMethod = TeXMath
                     }
 
 -- | Concatenate and trim inlines.

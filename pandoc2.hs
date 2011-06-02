@@ -21,10 +21,9 @@ main = do
                            , optExtensions =
                                if strict opts
                                   then noExtensions
-                                  else case extension opts of
-                                            Nothing -> allExtensions
-                                            Just es -> setExtensions es
+                                  else setExtensions $ extension opts
                            , optSmart = smart opts
+                           , optMathMethod = math_method opts
                            }
   let convert = markdownDoc poptions' . decodeUtf8
   let render = case map toLower (to opts) of
@@ -40,8 +39,9 @@ data Pandoc2 = Pandoc2
     { tab_stop    :: Int
     , files       :: [FilePath]
     , strict      :: Bool
-    , extension   :: Maybe [PExtension]
+    , extension   :: [PExtension]
     , smart       :: Bool
+    , math_method :: HTMLMathMethod
     , to          :: String
     , from        :: String
     }
@@ -57,8 +57,10 @@ opts = Pandoc2
     { from        = "markdown" &= typ "FORMAT" &= help "Source format"
     , to          = "html" &= typ "FORMAT" &= help "Target format"
     , strict      = def &= help "Disable pandoc's markdown extensions"
-    , extension   = def &= typ "EXTENSION" &= help "Selectively enable syntax extension"
+    , extension   = enumFrom Footnotes &=
+                      typ "EXTENSION" &= help "Selectively enable syntax extension"
     , smart       = def &= help "Enable smart typography"
+    , math_method = TeXMath &= typ "MATHMETHOD" &= help "Use MathML for math in HTML"
     , tab_stop    = 4 &= groupname "Options" &= explicit &= name "tab-stop"
                       &= help "Tab stop"
     , files       = def &= args &= typ "FILE.."
