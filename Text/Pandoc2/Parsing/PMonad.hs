@@ -65,6 +65,9 @@ logM level msg = do
   when (level >= logLevel) $
      lift $ addMessage $ Message level (Just pos) msg
 
+unlessStrict :: PMonad m => P t m ()
+unlessStrict = getOption optStrict >>= guard . not
+
 -- | Parse contents of a file with the specified parser.
 parseIncludeFile :: PMonad m
                  => (Text -> [t]) -> FilePath -> P t m a -> P t m a

@@ -650,9 +650,6 @@ blockTags = [ "address", "blockquote", "center", "del", "dir", "div",
 pEntity :: PMonad m => MP m (PR Inlines)
 pEntity = Const . ch <$> pEntityChar
 
-unlessStrict :: PMonad m => MP m ()
-unlessStrict = getOption optStrict >>= guard . not
-
 ---
 
 pMathWord :: PMonad m => MP m Text
