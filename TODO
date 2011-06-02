@@ -8,12 +8,12 @@ x non-strict treatment of html
 x definition lists - tight/loose distinction, test
 x move para-to-plain transform for all lists to markdown,
   remove tight list attribute
+x header identifiers
 _ example lists - rethink syntax to avoid clash w/ citations?
 _ tex math macros
 _ tex math output (texmath reader, mathml, js)
 _ inline tex?
 _ tables - use structure with cell combinators?
-_ header identifiers -- or something better?
 _ super/subscript?
 _ strikeout?
 _ picture captions? - improve
