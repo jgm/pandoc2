@@ -3,20 +3,24 @@
 module Text.Pandoc2.Writer.HTML (docToHtml) where
 import Text.Pandoc2.Definition
 import Text.Pandoc2.Builder ((<+>), rawInline)
-import Text.Pandoc2.Shared (textify, POptions(..))
+import Text.Pandoc2.Shared (textify, POptions(..), inlinesToIdentifier, show')
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Monoid
 import qualified Data.Foldable as F
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import Data.List (intersperse)
 import Control.Monad.State
 import Control.Applicative
+import qualified Data.Map as M
 
-data WriterState = WriterState { wOptions :: POptions
-                               , wNotes   :: [Html] }
+data WriterState = WriterState { wOptions     :: POptions
+                               , wNotes       :: [Html]
+                               , wIdentifiers :: M.Map Text Int
+                               }
 
 type W = State WriterState Html
 
@@ -29,7 +33,7 @@ nl = return $ preEscapedText "\n"
 
 docToHtml :: POptions -> Blocks -> Html
 docToHtml opts bs =
-  evalState goHtml WriterState{ wOptions = opts, wNotes   = [] }
+  evalState goHtml WriterState{ wOptions = opts, wNotes   = [], wIdentifiers = M.empty }
     where goHtml = do body <- blocksToHtml bs
                       notes <- reverse . wNotes <$> get
                       spacer <- nl
@@ -77,14 +81,28 @@ blockToHtml (Code attr t) = return $ addAttributes attr
                                    $ H.pre $ H.code $ toHtml t
 blockToHtml (RawBlock (Format "html") t) = return $ preEscapedText t
 blockToHtml (RawBlock _ _) = return mempty
-blockToHtml (Header lev ils) = h <$> inlinesToHtml ils
-  where h = case lev of
-             1  -> H.h1
-             2  -> H.h2
-             3  -> H.h3
-             4  -> H.h4
-             5  -> H.h5
-             _  -> H.p
+blockToHtml (Header lev ils) = do
+  let h = case lev of
+             1 -> H.h1
+             2 -> H.h2
+             3 -> H.h3
+             4 -> H.h4
+             5 -> H.h5
+             _ -> H.p
+  opts <- wOptions <$> get
+  ht <- if optStrict opts
+           then return h
+           else do
+             let ident = inlinesToIdentifier ils
+             idents <- wIdentifiers <$> get
+             case M.lookup ident idents of
+                  Nothing -> do
+                    modify (\s -> s{ wIdentifiers = M.insert ident 1 idents })
+                    return $ h ! A.id (toValue ident)
+                  Just n  -> do
+                    modify (\s -> s{ wIdentifiers = M.insert ident (n+1) idents })
+                    return $ h ! A.id (toValue $ ident <> "-" <> show' n)
+  ht <$> inlinesToHtml ils
 blockToHtml HRule = return H.hr
 
 inlinesToHtml :: Inlines -> W
