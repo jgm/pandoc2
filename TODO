@@ -9,9 +9,11 @@ x definition lists - tight/loose distinction, test
 x move para-to-plain transform for all lists to markdown,
   remove tight list attribute
 x header identifiers
+x tex math output (mathml)
 _ example lists - rethink syntax to avoid clash w/ citations?
 _ tex math macros
-_ tex math output (texmath reader, mathml, js)
+_ plain math output
+_ other math formats
 _ inline tex?
 _ tables - use structure with cell combinators?
 _ super/subscript?
@@ -19,6 +21,7 @@ _ strikeout?
 _ picture captions? - improve
 _ citations
 _ title block/metadata - rethink?
+_ highlighting
 
 Other writers
 Other readers

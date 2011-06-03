@@ -123,18 +123,13 @@ inlineToHtml (Image (Label lab) src@Source{}) = return $
   H.img ! A.src (toValue $ location src) ! A.title (toValue $ title src)
         ! A.alt (toValue $ textify lab)
 inlineToHtml LineBreak = return $ H.br
-inlineToHtml (Math InlineMath t) = do
+inlineToHtml (Math sty t) = do
   mathMethod <- optMathMethod . wOptions <$> get
-  case mathMethod of
-       MathML    -> error "MathML unimplemented"
-       PlainMath -> error "PlainMath unimplemented"
-       TeXMath   -> return $ H.span ! A.class_ "math" $ toHtml t
-inlineToHtml (Math DisplayMath t) = do
-  mathMethod <- optMathMethod . wOptions <$> get
-  case mathMethod of
-       MathML    -> error "MathML unimplemented"
-       PlainMath -> error "PlainMath unimplemented"
-       TeXMath  -> return $ H.div ! A.class_ "math" $ toHtml t
+  return $ case mathMethod of
+             MathML    -> toMathML sty t
+             PlainMath -> error "PlainMath unimplemented"
+             TeXMath   -> h ! A.class_ "math" $ toHtml t
+               where h = if sty == InlineMath then H.span else H.div
 inlineToHtml (RawInline (Format "html") t) = return $ preEscapedText t
 inlineToHtml (RawInline _ _) = return $ mempty
 inlineToHtml (Verbatim _attr t) = return $ H.code $ toHtml t
