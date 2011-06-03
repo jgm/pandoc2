@@ -16,6 +16,8 @@ import Data.List (intersperse)
 import Control.Monad.State
 import Control.Applicative
 import qualified Data.Map as M
+import Text.TeXMath
+import Text.XML.Light.Output
 
 data WriterState = WriterState { wOptions     :: POptions
                                , wNotes       :: [Html]
@@ -169,7 +171,6 @@ addBacklink refid bs =
        (Plain xls : xs)  -> fromItems $ reverse $ Plain (xls <+> back) : xs
        xs                -> fromItems $ reverse $ Plain back : xs
 
--- TODO: rewrite map go keys without nub, using a fold:
 addAttributes :: Attr -> Html -> Html
 addAttributes (Attr []) h = h
 addAttributes (Attr attr) h =
@@ -180,3 +181,13 @@ addAttributes (Attr attr) h =
                               Nothing -> (k,v):acc
                               Just v' -> (k, T.unwords [v',v]):
                                            [(x,y) | (x,y) <- acc, x /= k]
+
+toMathML :: MathType -> Text -> Html
+toMathML t m =
+  let dt = if t == InlineMath
+              then DisplayInline
+              else DisplayBlock
+      conf = useShortEmptyTags (const False) defaultConfigPP
+  in case texMathToMathML dt (T.unpack m) of
+      Right r -> preEscapedString $ ppcElement conf r
+      Left  _ -> H.span ! A.class_ "math" $ toHtml m
