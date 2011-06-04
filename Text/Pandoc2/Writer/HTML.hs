@@ -118,6 +118,7 @@ inlineToHtml (Emph ils) = H.em <$> inlinesToHtml ils
 inlineToHtml (Strong ils) = H.strong <$> inlinesToHtml ils
 inlineToHtml (Subscript ils) = H.sub <$> inlinesToHtml ils
 inlineToHtml (Superscript ils) = H.sup <$> inlinesToHtml ils
+inlineToHtml (Strikeout ils) = H.del <$> inlinesToHtml ils
 inlineToHtml (Link (Label lab) src@Source{}) = do
   let tit = title src
   x <- (H.a ! A.href (toValue $ location src)) <$> inlinesToHtml lab
