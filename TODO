@@ -15,9 +15,10 @@ x plain math output
 
 x markdown parsing for super/subscript
 x markdown strikeout
+
 _ tests for math
 _ tests for super/subscript
-_ tests for fenced code blocks
+x tests for fenced code blocks
 _ tests for HTML bolcks with markdown
 
 _ example lists - possibly rethink syntax to avoid clash w/ citations?
@@ -36,6 +37,11 @@ _ tex math macros (do generic tex parsers first, can't easily reuse
 _ other math formats
 _ comments?
 _ anchors?
+
+_ writer: use fold instead of map?
+  this wd allow things like inserting an HTML comment btw a
+  markdown list and an indented code block.
+
 
 Other writers
 Other readers

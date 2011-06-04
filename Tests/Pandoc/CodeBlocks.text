@@ -1,0 +1,24 @@
+# Code Blocks
+
+Code:
+
+    ---- (should be four hyphens)
+
+    sub status {
+        print "working";
+    }
+
+	this code block is indented by one tab
+
+And:
+
+		this code block is indented by two tabs
+
+    These should not be escaped:  \$ \\ \> \[ \{
+
+Delimited:
+
+~~~~ { .class .otherclass key="val" #ident }
+   my *code*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
