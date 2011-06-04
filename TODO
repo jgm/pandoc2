@@ -13,11 +13,6 @@ x tex math output (mathml)
 x super/subscript
 x plain math output
 
-_ should writer be in a PMonad?
-  this would allow calls to e.g. external highlighting programs
-  also warning messages
-  natural to chain together reader and writer using >>=
-
 _ markdown parsing for super/subscript
 _ markdown strikeout
 _ tests for math
