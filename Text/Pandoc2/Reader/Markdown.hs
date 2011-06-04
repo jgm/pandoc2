@@ -341,7 +341,7 @@ paraToPlain = mapItems go
         go x          = single x
 
 pDefSep :: PMonad m => MP m ()
-pDefSep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> sps
+pDefSep = try $ nonindentSpace *> (sym '~' <|> sym ':') *> space *> sps
 
 pDef :: PMonad m => MP m (Bool, PR Blocks)
 pDef = try $ do
