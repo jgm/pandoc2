@@ -1,10 +1,14 @@
-module Text.Pandoc2.Readers.TeXMath ( texMathToPandoc ) where
+{-# LANGUAGE OverloadedStrings #-}
+module Text.Pandoc2.Reader.TeXMath ( texMathToPandoc ) where
 
 import Text.Pandoc2.Definition
 import Text.Pandoc2.Builder
 import Text.TeXMath.Types
 import Text.TeXMath.Parser
 import qualified Data.Text as T
+import Data.Text (Text)
+import Control.Monad
+import Data.Monoid
 
 texMathToPandoc :: Text -> Either String Inlines
 texMathToPandoc inp = inp `seq`
@@ -15,7 +19,8 @@ texMathToPandoc inp = inp `seq`
                              Just r   -> Right r
 
 expsToInlines :: [Exp] -> Maybe Inlines
-expsToInlines = foldM (liftM (<>)) mempty
+expsToInlines =
+  foldM (\ils e -> liftM2 (<>) (return ils) (expToInlines e)) mempty
 
 str :: String -> Inlines
 str = txt . T.pack
@@ -55,7 +60,7 @@ expToInlines (EUp x y) = expToInlines (ESuper x y)
 expToInlines (EDownup x y z) = expToInlines (ESubsup x y z)
 expToInlines (EText "normal" x) = return $ str x
 expToInlines (EText "bold" x) = return $ strong $ str x
-expToInlines (EText "monospace" x) = return $ verbatim nullAttr $ T.pack x
+expToInlines (EText "monospace" x) = return $ verbatim $ T.pack x
 expToInlines (EText "italic" x) = return $ emph $ str x
 expToInlines (EText _ x) = return $ str x
 expToInlines (EOver (EGrouped [EIdentifier [c]]) (ESymbol Accent [accent])) =

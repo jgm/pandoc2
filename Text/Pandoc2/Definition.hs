@@ -49,6 +49,8 @@ data Inline = Txt Text
             | Sp
             | Emph Inlines
             | Strong Inlines
+            | Subscript Inlines
+            | Superscript Inlines
             | Image Label Source
             | Link Label Source
             | Verbatim Attr Text
@@ -139,6 +141,8 @@ instance Monoid Inlines where
                           (Txt t1, Txt t2)   -> xs' |> Txt (t1 <> t2)
                           (Emph i1, Emph i2) -> xs' |> Emph (i1 <> i2)
                           (Strong i1, Strong i2) -> xs' |> Strong (i1 <> i2)
+                          (Subscript i1, Subscript i2) -> xs' |> Subscript (i1 <> i2)
+                          (Superscript i1, Superscript i2) -> xs' |> Superscript (i1 <> i2)
                           (Sp, LineBreak)    -> xs' |> LineBreak
                           _                  -> xs' |> x |> y
 

@@ -2,8 +2,9 @@
     TypeSynonymInstances #-}
 module Text.Pandoc2.Writer.HTML (docToHtml) where
 import Text.Pandoc2.Definition
-import Text.Pandoc2.Builder ((<+>), rawInline)
+import Text.Pandoc2.Builder
 import Text.Pandoc2.Shared
+import Text.Pandoc2.Reader.TeXMath
 import Text.Blaze
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -115,6 +116,8 @@ inlineToHtml (Txt x) = return $ toHtml x
 inlineToHtml Sp      = return $ toHtml (" " :: L.Text)
 inlineToHtml (Emph ils) = H.em <$> inlinesToHtml ils
 inlineToHtml (Strong ils) = H.strong <$> inlinesToHtml ils
+inlineToHtml (Subscript ils) = H.sub <$> inlinesToHtml ils
+inlineToHtml (Superscript ils) = H.sup <$> inlinesToHtml ils
 inlineToHtml (Link (Label lab) src@Source{}) = do
   let tit = title src
   x <- (H.a ! A.href (toValue $ location src)) <$> inlinesToHtml lab
@@ -125,11 +128,22 @@ inlineToHtml (Image (Label lab) src@Source{}) = return $
 inlineToHtml LineBreak = return $ H.br
 inlineToHtml (Math sty t) = do
   mathMethod <- optMathMethod . wOptions <$> get
-  return $ case mathMethod of
-             MathML    -> toMathML sty t
-             PlainMath -> error "PlainMath unimplemented"
-             TeXMath   -> h ! A.class_ "math" $ toHtml t
-               where h = if sty == InlineMath then H.span else H.div
+  case mathMethod of
+    MathML    -> return $ toMathML sty t
+    PlainMath -> case texMathToPandoc t of
+                        Left _    ->
+                          if sty == InlineMath
+                             then return $ H.span ! A.class_ "math" $
+                                    toHtml ("$" <> t <> "$")
+                             else return $ H.span ! A.class_ "math" $
+                                    toHtml ("$$" <> t <> "$$")
+                        Right ils ->
+                          if sty == InlineMath
+                             then inlinesToHtml ils
+                             else inlinesToHtml
+                                  (lineBreak <> ils <> lineBreak)
+    TeXMath   -> return $ h ! A.class_ "math" $ toHtml t
+      where h = if sty == InlineMath then H.span else H.div
 inlineToHtml (RawInline (Format "html") t) = return $ preEscapedText t
 inlineToHtml (RawInline _ _) = return $ mempty
 inlineToHtml (Verbatim _attr t) = return $ H.code $ toHtml t

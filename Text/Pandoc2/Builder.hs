@@ -23,6 +23,12 @@ emph = single . Emph
 strong :: Inlines -> Inlines
 strong = single . Strong
 
+subscript :: Inlines -> Inlines
+subscript = single . Subscript
+
+superscript :: Inlines -> Inlines
+superscript = single . Superscript
+
 link :: Inlines -> Source -> Inlines
 link lab src = single $ Link (Label lab) src
 

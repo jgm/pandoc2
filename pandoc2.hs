@@ -60,7 +60,7 @@ opts = Pandoc2
     , extension   = enumFrom Footnotes &=
                       typ "EXTENSION" &= help "Selectively enable syntax extension"
     , smart       = def &= help "Enable smart typography"
-    , math_method = TeXMath &= typ "MATHMETHOD" &= help "Use MathML for math in HTML"
+    , math_method = PlainMath &= typ "MATHMETHOD" &= help "How to display math in HTML"
     , tab_stop    = 4 &= groupname "Options" &= explicit &= name "tab-stop"
                       &= help "Tab stop"
     , files       = def &= args &= typ "FILE.."
