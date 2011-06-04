@@ -29,6 +29,9 @@ subscript = single . Subscript
 superscript :: Inlines -> Inlines
 superscript = single . Superscript
 
+strikeout :: Inlines -> Inlines
+strikeout = single . Strikeout
+
 link :: Inlines -> Source -> Inlines
 link lab src = single $ Link (Label lab) src
 
