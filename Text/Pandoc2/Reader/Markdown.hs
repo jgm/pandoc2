@@ -248,16 +248,22 @@ pStrong = strong <$$>
           ulEnd     = try (count 2 (sym '_'))
 
 pSuperscript :: PMonad m => MP m (PR Inlines)
-pSuperscript = superscript <$$> (pInlinesBetween superDelim superDelim)
-  where superDelim = sym '^' <* notFollowedBy (sym '[') -- footnote
+pSuperscript = superscript <$$> (pInlinesBetween superStart superEnd)
+  where superStart = try $ sym '^' <* lookAhead (satisfyTok notSpNlOrBracket)
+        notSpNlOrBracket t = t /= SPACE && t /= NEWLINE && t /= SYM '['
+        superEnd   = try $ sym '^' <* notFollowedBy (sym '[')
 
 pSubscript :: PMonad m => MP m (PR Inlines)
-pSubscript = subscript <$$> (pInlinesBetween subDelim subDelim)
-  where subDelim = try $ sym '~' <* notFollowedBy (sym '~')
+pSubscript = subscript <$$> (pInlinesBetween subStart subEnd)
+  where subStart = try $ sym '~' <* lookAhead (satisfyTok notSpNlOrTilde)
+        subEnd   = try $ sym '~' <* notFollowedBy (sym '~')
+
+notSpNlOrTilde :: Tok -> Bool
+notSpNlOrTilde t = t /= SPACE && t /= NEWLINE && t /= SYM '~'
 
 pStrikeout :: PMonad m => MP m (PR Inlines)
 pStrikeout = strikeout <$$> (pInlinesBetween strikeStart strikeEnd)
-  where strikeStart = try $ sym '~' <* sym '~'
+  where strikeStart = try $ sym '~' <* sym '~' <* lookAhead (satisfyTok notSpNlOrTilde)
         strikeEnd   = try $ sym '~' *> sym '~'
 
 pNoteRef :: PMonad m => MP m (PR Inlines)
