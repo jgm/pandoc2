@@ -13,8 +13,8 @@ x tex math output (mathml)
 x super/subscript
 x plain math output
 
-_ markdown parsing for super/subscript
-_ markdown strikeout
+x markdown parsing for super/subscript
+x markdown strikeout
 _ tests for math
 _ tests for super/subscript
 _ tests for fenced code blocks

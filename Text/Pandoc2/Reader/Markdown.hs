@@ -37,7 +37,8 @@ pDoc = skipMany newline *> pBlocks <* skipMany pNewline <* eof
 
 pInline :: PMonad m => MP m (PR Inlines)
 pInline = choice [ pWord, pSp, pEndline, pQuoted, pFours,
-            pStrong, pEmph, pVerbatim, pNoteRef, pImage, pLink, pAutolink,
+            pStrong, pEmph, pSuperscript, pSubscript, pStrikeout,
+            pVerbatim, pNoteRef, pImage, pLink, pAutolink,
             pInlineNote, pEscaped, pMath, pEntity, pHtmlInline, pSym ]
 
 pInlines :: PMonad m => MP m (PR Inlines)
@@ -245,6 +246,19 @@ pStrong = strong <$$>
           starEnd   = try (count 2 (sym '*'))
           ulStart   = count 2 (sym '_') *> lookAhead nonSpace
           ulEnd     = try (count 2 (sym '_'))
+
+pSuperscript :: PMonad m => MP m (PR Inlines)
+pSuperscript = superscript <$$> (pInlinesBetween superDelim superDelim)
+  where superDelim = sym '^'
+
+pSubscript :: PMonad m => MP m (PR Inlines)
+pSubscript = subscript <$$> (pInlinesBetween subDelim subDelim)
+  where subDelim = try $ sym '~' <* notFollowedBy (sym '~')
+
+pStrikeout :: PMonad m => MP m (PR Inlines)
+pStrikeout = strikeout <$$> (pInlinesBetween strikeStart strikeEnd)
+  where strikeStart = try $ sym '~' <* sym '~'
+        strikeEnd   = try $ sym '~' *> sym '~'
 
 pNoteRef :: PMonad m => MP m (PR Inlines)
 pNoteRef = do
