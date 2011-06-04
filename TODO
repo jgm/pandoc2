@@ -12,16 +12,33 @@ x header identifiers
 x tex math output (mathml)
 x super/subscript
 x plain math output
-_ example lists - rethink syntax to avoid clash w/ citations?
-_ tex math macros
-_ other math formats
-_ inline tex?
+
+_ should writer be in a PMonad?
+  this would allow calls to e.g. external highlighting programs
+  also warning messages
+  natural to chain together reader and writer using >>=
+
+_ markdown parsing for super/subscript
+_ markdown strikeout
+_ tests for math
+_ tests for super/subscript
+_ tests for fenced code blocks
+_ tests for HTML bolcks with markdown
+
+_ example lists - possibly rethink syntax to avoid clash w/ citations?
+  (use ! instead of @)
+
+_ inline tex
 _ tables - use structure with cell combinators?
-_ strikeout?
-_ picture captions? - improve
+  cell (2 `x` 3) contents <> ( cell (1 `x` 1) z ^^^ cell (1 `x` 1) y )
+
 _ citations
+_ picture captions? - improve
 _ title block/metadata - rethink?
 _ highlighting
+_ tex math macros (do generic tex parsers first, can't easily reuse
+   parser from texmath because it operates on a string)
+_ other math formats
 _ comments?
 _ anchors?
 
@@ -33,28 +50,24 @@ Example lists:
 
 ##.  blah
 ##.  blah
-#foo.  blah
-#bar.  baz
-#(foo).  blah
-#(bar).  baz
-!.  blah
-!.  foo
-!baz. baz
-!bar. bar
-(!) bar
-(!foo) baz
+#foo#.  blah
+#bar#.  baz
+(#bar#)  my example
 
-##[myexamp].  blah
+See (#bar#) for an example.
 
-In example ##[myexamp]
-IN example (##[myexamp])
-In example (@foo)
-Example @foo shows.
-In example (#foo)
-Example #foo shows.
-In example (!foo)
-Example !foo shows.
+##foo.  blah
+##bar.  baz
+(##bar)  my example
 
+See (##bar) for an example.
+
+!.  bim
+!foo.  blah
+!bar.  baz
+(!bar)  my example
+
+See (!bar) for an example.
 
 ---
 
