@@ -38,6 +38,7 @@ Library
                    Text.Pandoc2.Builder,
                    Text.Pandoc2.Shared,
                    Text.Pandoc2.Reader.Markdown,
+                   Text.Pandoc2.Reader.TeXMath,
                    Text.Pandoc2.Writer.HTML
 
   Other-Modules:   Text.Pandoc2.Parsing.Types,
