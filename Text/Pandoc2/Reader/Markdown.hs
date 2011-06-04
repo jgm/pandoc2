@@ -249,7 +249,7 @@ pStrong = strong <$$>
 
 pSuperscript :: PMonad m => MP m (PR Inlines)
 pSuperscript = superscript <$$> (pInlinesBetween superDelim superDelim)
-  where superDelim = sym '^'
+  where superDelim = sym '^' <* notFollowedBy (sym '[') -- footnote
 
 pSubscript :: PMonad m => MP m (PR Inlines)
 pSubscript = subscript <$$> (pInlinesBetween subDelim subDelim)
