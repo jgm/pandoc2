@@ -192,10 +192,10 @@ pExplicitLink lab = try $ do
 pSource :: PMonad m => MP m Text
 pSource = angleSource <|> regSource
   where angleSource = try $ sym '<' *> textTill nonNewline (sym '>')
-        regSource   = T.concat <$> many chunk
-        chunk       = toksToText <$> (  many1 normalChar
-                                    <|> inParens normalChar
-                                    <|> count 1 (sym '(') )
+        regSource   = toksToText . mconcat <$> many chunk
+        chunk       = (  many1 normalChar
+                     <|> inParens normalChar
+                     <|> count 1 (sym '(') )
         normalChar  = notFollowedBy paren *> lookAhead nonSpace *> anyTok
         paren       = sym '(' <|> sym ')'
 
