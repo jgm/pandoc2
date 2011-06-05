@@ -162,9 +162,12 @@ pNewline = try $ spnl *> pBlockSep
 -- at the beginning of the next line that are part of the block
 -- context. Return a Space.
 pEndline :: PMonad m => P Tok m (PR Inlines)
-pEndline = try $
-  newline *> (getState >>= sequenceA . sEndline) *> sps *>
-  lookAhead nonNewline *> return (Const $ single Sp)
+pEndline = try $ do
+  newline
+  getState >>= sequenceA . sEndline
+  sps
+  lookAhead nonNewline
+  return $ Const $ single Sp
 
 -- | Parses line-ending spaces, if present, and optionally
 -- an endline followed by any spaces at the beginning of

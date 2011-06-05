@@ -293,7 +293,13 @@ pBlock = choice [pQuote, pCode, pHrule, pList, pNote, pReference,
                  pHeader, pHtmlBlock, pDefinitions, pPara]
 
 pBlocks :: PMonad m => MP m (PR Blocks)
-pBlocks = option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
+pBlocks = do
+  exts <- getOption optExtensions
+  let sep = sequenceA
+       $  [ notFollowedBy (sym '>') | isDisabled Blank_before_blockquote exts ]
+       ++ [ notFollowedBy' pHeader  | isDisabled Blank_before_header exts ]
+  withEndline sep $
+    option mempty $ mconcat <$> (pBlock `sepBy` pNewlines)
 
 pPara :: PMonad m => MP m (PR Blocks)
 pPara = para <$$> pInlines

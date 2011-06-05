@@ -37,6 +37,8 @@ data PExtension = Footnotes
                 | Header_identifiers
                 | All_symbols_escapable
                 | Intraword_underscores
+                | Blank_before_blockquote
+                | Blank_before_header
                 deriving (Show, Read, Data, Typeable, Enum, Eq)
 
 newtype PExtensions = PExtensions { unPExtensions :: Integer }
@@ -55,6 +57,9 @@ setExtensions =
 isEnabled :: PExtension -> PExtensions -> Bool
 isEnabled ext opts =
   testBit (unPExtensions opts) (fromEnum ext)
+
+isDisabled :: PExtension -> PExtensions -> Bool
+isDisabled ext opts = not (isEnabled ext opts)
 
 data HTMLMathMethod = PlainMath
                     | MathML
