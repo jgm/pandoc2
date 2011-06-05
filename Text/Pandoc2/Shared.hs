@@ -36,6 +36,7 @@ data PExtension = Footnotes
                 | Definition_lists
                 | Header_identifiers
                 | All_symbols_escapable
+                | Intraword_underscores
                 deriving (Show, Read, Data, Typeable, Enum, Eq)
 
 newtype PExtensions = PExtensions { unPExtensions :: Integer }

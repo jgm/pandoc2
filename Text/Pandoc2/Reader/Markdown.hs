@@ -114,7 +114,7 @@ pWord = do
                  then try (SYM '\8217' <$ sym '\'' <* lookAhead wordTok)
                  else mzero
   let chunk = satisfyTok isWordTok
-           <|> (try $ sym '_' <* lookAhead chunk)
+           <|> (guardExtension Intraword_underscores *> try (sym '_' <* lookAhead chunk))
            <|> apos
   xs <- many chunk
   return $ Const $ txt $ toksToText (x:xs)
