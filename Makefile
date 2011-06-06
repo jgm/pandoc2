@@ -23,3 +23,5 @@ pandoctests:
 	cd Tests && \
 	OPTS="--smart=yes" perl MarkdownTest.pl --testdir=Pandoc -s ./markdown  --tidy
 
+shelltests:
+	shelltest --diff --color --with=dist/build/pandoc2/pandoc2 Tests
