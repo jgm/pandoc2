@@ -6,6 +6,7 @@ import Text.Pandoc2.Builder
 import Text.Pandoc2.Shared
 import Text.Pandoc2.Reader.TeXMath
 import Text.Blaze
+import Text.Blaze.Internal (HtmlM (Empty))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Monoid
@@ -47,12 +48,18 @@ docToHtml opts bs =
                                             <> mconcat
                                                 (intersperse spacer notes)
                                             <> spacer)
-                      return $ body <> if null notes
-                                          then mempty
-                                          else fnblock
+                      return $ body <> spacer <> if null notes
+                                                    then mempty
+                                                    else fnblock
 
 blocksToHtml :: Blocks -> W
-blocksToHtml bs = mconcat <$> (mapM (\b -> blockToHtml b <> nl) $ toItems bs)
+blocksToHtml bs = foldM go mempty $ toItems bs
+  where go a b = do x <- return a
+                    y <- if isEmpty a then return mempty else nl
+                    z <- blockToHtml b
+                    return $ x <> y <> z
+        isEmpty Empty = True
+        isEmpty _     = False
 
 blockToHtml :: Block -> W
 blockToHtml (Para ils) = H.p <$> inlinesToHtml ils
@@ -76,7 +83,7 @@ blockToHtml (List style bs) =
               where ol = addStart start $ addStyle sty $ H.ol
 blockToHtml (Definitions items) = do
   let toTerm ils = inlinesToHtml ils
-  let toDef bs   = (H.dd <$> nl <> blocksToHtml bs) <> nl
+  let toDef bs   = (H.dd <$> blocksToHtml bs) <> nl
   let toItem (term, defs) = (H.dt <$> toTerm term)
                          <> nl <> (mconcat $ map toDef defs)
   H.dl <$> nl <> mconcat (map toItem items)
