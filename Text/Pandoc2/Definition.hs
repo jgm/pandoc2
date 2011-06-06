@@ -167,6 +167,7 @@ class Listable a b where
   mapItems   :: (b -> a) -> a -> a
   single     :: b -> a
   foldItemsM :: Monad m => (a -> b -> m a) -> a -> a -> m a
+  isNull     :: a -> Bool
 
 instance Listable Inlines Inline where
   toItems        = F.toList . unInlines
@@ -174,6 +175,7 @@ instance Listable Inlines Inline where
   mapItems f     = F.foldMap f . unInlines
   single         = Inlines . Seq.singleton
   foldItemsM f x = F.foldlM f x . unInlines
+  isNull         = Seq.null . unInlines
 
 instance Listable Blocks Block where
   toItems        = F.toList . unBlocks
@@ -181,6 +183,7 @@ instance Listable Blocks Block where
   mapItems f     = F.foldMap f . unBlocks
   single         = Blocks . Seq.singleton
   foldItemsM f x = F.foldlM f x . unBlocks
+  isNull         = Seq.null . unBlocks
 
 -- | Trim leading and trailing Sp (spaces) from an Inlines.
 trimInlines :: Inlines -> Inlines
