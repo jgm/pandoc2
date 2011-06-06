@@ -20,6 +20,11 @@ The following pandoc markdown extensions have been implemented:
 * TeX math
 * footnotes
 * fancy list markers
+* automatic header identifiers
+* superscripts
+* subscripts
+* strikeout
+* definition lists
 
 There are a few changes in how lists work.  The most important is
 that changes in style now trigger a new list. The following is one
@@ -96,8 +101,6 @@ entirely, and having the parsers return functions from references to
 values, which are then run at the end of parsing.
 
 To run the Markdown test suite, do `make test`. To run the PHP Markdown test
-suite, do `make phptests`. Several of the PHP tests fail, but in many of these
-cases I disagree about what behavior is normative. (For example, I don't think
-a `#` character at the beginning of a line inside a paragraph should start a
-header.)
+suite, do `make phptests`. Several of the PHP tests will fail, but in
+these cases I disagree about what behavior is normative.
 
