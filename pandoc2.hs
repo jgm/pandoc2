@@ -2,16 +2,13 @@
 import Text.Pandoc2
 import Text.Blaze.Renderer.Utf8
 import qualified Data.ByteString as B
-import System.Environment
 import Data.Text.Encoding (decodeUtf8)
-import qualified Data.Text as T
 import Data.Char (toLower)
-import Data.List (intercalate)
 import System.Console.CmdArgs
 
 main :: IO ()
 main = do
-  opts <- cmdArgs opts
+  opts <- cmdArgs options
   verbosity' <- getVerbosity
   let poptions' = poptions { optLogLevel = case verbosity' of
                                                 Quiet  -> ERROR
@@ -55,7 +52,8 @@ extensionsHelp =
   "Syntax extensions: " ++ intercalate ", " (map show (enumFrom Footnotes))
 -}
 
-opts = Pandoc2
+options :: Pandoc2
+options = Pandoc2
     { from        = "markdown" &= typ "FORMAT" &= help "Source format"
     , to          = "html" &= typ "FORMAT" &= help "Target format"
     , strict      = def &= help "Disable pandoc's markdown extensions"
