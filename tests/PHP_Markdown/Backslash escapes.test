@@ -2,4 +2,12 @@ pandoc2 --strict
 <<<
 Tricky combinaisons:backslash with \\-- two dashesbackslash with \\> greater than\\\[test](not a link)\\\*no emphasis*
 >>>
-<p>Tricky combinaisons:</p><p>backslash with \-- two dashes</p><p>backslash with \> greater than</p><p>\[test](not a link)</p><p>\*no emphasis*</p>
+<p>Tricky combinaisons:</p>
+
+p>backslash with \-- two dashes</p>
+
+<p>backslash with \> greater than</p>
+
+<p>\[test](not a link)</p>
+
+<p>\*no emphasis*</p>

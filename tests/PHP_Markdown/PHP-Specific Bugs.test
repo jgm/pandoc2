@@ -24,12 +24,9 @@ Test with tabs for `_Detab`:
 	Code	'block'	with	some	"tabs"	and	"quotes"
 
 >>>
-<p>This tests for a bug where quotes escaped by PHP when using 
-<code>preg_replace</code> with the <code>/e</code> modifier must be correctly unescaped
-(hence the <code>_UnslashQuotes</code> function found only in PHP Markdown).</p>
+<p>This tests for a bug where quotes escaped by PHP when using <code>preg_replace</code> with the <code>/e</code> modifier must be correctly unescaped (hence the <code>_UnslashQuotes</code> function found only in PHP Markdown).</p>
 
-<p>Headers below should appear exactly as they are typed (no backslash
-added or removed).</p>
+<p>Headers below should appear exactly as they are typed (no backslash added or removed).</p>
 
 <h1>Header "quoted\" again \""</h1>
 
@@ -39,5 +36,4 @@ added or removed).</p>
 
 <p>Test with tabs for <code>_Detab</code>:</p>
 
-<pre><code>Code    'block' with    some    "tabs"  and "quotes"
-</code></pre>
+<pre><code>Code    'block' with    some    "tabs"  and "quotes" </code></pre>

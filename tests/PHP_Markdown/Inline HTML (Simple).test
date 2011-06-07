@@ -28,7 +28,7 @@ Hr's:
     foo
 </div>
 
-<p>Hr's:</p>
+<p>Hr&#39;s:</p>
 
 <hr class="foo"
     id="bar" >
