@@ -1,1 +1,1 @@
-time pandoc2 "$@" progit.txt >/dev/null
+time "$@" progit.txt markdown_syntax.txt README.markdown >/dev/null
