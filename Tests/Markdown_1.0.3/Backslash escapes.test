@@ -225,9 +225,7 @@ Minus: \-
 
 <p>Minus: <code>\-</code></p>
 
-
-<p>These should get escaped, even though they're matching pairs for
-other Markdown constructs:</p>
+<p>These should get escaped, even though they're matching pairs for other Markdown constructs:</p>
 
 <p>*asterisks*</p>
 

@@ -14,14 +14,14 @@ pandoc2 --strict
 
 >>>
 <blockquote>
-  <p>Example:</p>
+<p>Example:</p>
 
 <pre><code>sub status {
     print "working";
 }
 </code></pre>
-  
-  <p>Or:</p>
+
+<p>Or:</p>
 
 <pre><code>sub status {
     return "working";
