@@ -13,7 +13,7 @@ clean:
 test: phptests shelltests
 
 shelltests:
-	perl shtest.pl -w "$(PANDOC2)" Tests/Markdown_1.0.3 Tests/Pandoc
+	perl shtest.pl -c -w "$(PANDOC2)" Tests/Markdown_1.0.3 Tests/Pandoc
 
 phptests:
-	perl shtest.pl -w "$(PANDOC2)" Tests/PHP_Markdown
+	perl shtest.pl -c -w "$(PANDOC2)" Tests/PHP_Markdown

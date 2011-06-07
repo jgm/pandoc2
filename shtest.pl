@@ -9,9 +9,10 @@ use Benchmark;
 use warnings;
 
 my %options = ();
-getopts("w:", \%options) or pod2usage(-verbose => 1) && exit;
+getopts("cw:", \%options) or pod2usage(-verbose => 1) && exit;
 
 $cmdsub = $options{w} || undef;
+$colors = $options{c};
 
 my $time_start = new Benchmark;
 
@@ -28,13 +29,25 @@ foreach (@ARGV) {
     my $ok = ($result =~ /^$/);
     if ($ok) {
       $passes += 1;
-      print colored ("[OK]     ", "yellow");
+      if ($colors) {
+        print colored ("[OK]     ", "yellow");
+      } else {
+        print "[OK]     ";
+      }
       print $fn;
     } else {
       $failures += 1;
-      print colored ("[FAILED] ", "red");
+      if ($colors) {
+        print colored ("[FAILED] ", "red");
+      } else {
+        print "[FAILED] ";
+      }
       print $fn;
-      print colored ($result, "cyan");
+      if ($colors) {
+        print colored ($result, "cyan");
+      } else {
+        print $result;
+      }
     }
   }
 
@@ -102,7 +115,6 @@ B<shtest>
 
 B<shtest.pl> [ B<options> ]  [ I<directory> ... ]
 
-
 =head1 DESCRIPTION
 
 
@@ -114,6 +126,10 @@ B<shtest.pl> [ B<options> ]  [ I<directory> ... ]
 
 Specify the path to the program to test.  The first word of
 the command line specified in each test will be replaced by this path.
+
+=item B<-c>
+
+Use ANSI colors in output.
 
 =back
 
