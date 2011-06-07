@@ -120,7 +120,8 @@ orange
 <pre><code>{ orange code block }
 </code></pre>
 <blockquote>
-<p>orange block quote</p></blockquote></dd>
+<p>orange block quote</p>
+</blockquote></dd>
 </dl>
 <p>Multiple definitions, tight:</p>
 <dl>

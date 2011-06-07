@@ -1,2 +1,0 @@
-#!/bin/sh
-../dist/build/pandoc2/pandoc2 $OPTS "$@"

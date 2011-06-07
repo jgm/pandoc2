@@ -1,0 +1,30 @@
+pandoc2 --strict
+<<<
+> Example:
+> 
+>     sub status {
+>         print "working";
+>     }
+> 
+> Or:
+> 
+>     sub status {
+>         return "working";
+>     }
+
+>>>
+<blockquote>
+  <p>Example:</p>
+
+<pre><code>sub status {
+    print "working";
+}
+</code></pre>
+  
+  <p>Or:</p>
+
+<pre><code>sub status {
+    return "working";
+}
+</code></pre>
+</blockquote>

@@ -33,7 +33,8 @@ This paragraph should not be part of the note, as it is not indented.
 <h1 id="footnotes">Footnotes</h1>
 <p>Here is a footnote reference,<sup><a id="fnref1" href="#fn1" class="footnoteRef">1</a></sup> and another.<sup><a id="fnref2" href="#fn2" class="footnoteRef">2</a></sup> This should <em>not</em> be a footnote reference, because it contains a space.[^my note] Here is an inline note.<sup><a id="fnref3" href="#fn3" class="footnoteRef">3</a></sup></p>
 <blockquote>
-<p>Notes can go in quotes.<sup><a id="fnref4" href="#fn4" class="footnoteRef">4</a></sup></p></blockquote>
+<p>Notes can go in quotes.<sup><a id="fnref4" href="#fn4" class="footnoteRef">4</a></sup></p>
+</blockquote>
 <ol type="1">
 <li>And in list items.<sup><a id="fnref5" href="#fn5" class="footnoteRef">5</a></sup></li>
 </ol>

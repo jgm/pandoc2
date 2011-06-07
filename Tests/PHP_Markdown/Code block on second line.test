@@ -1,0 +1,8 @@
+pandoc2 --strict
+<<<
+
+    Codeblock on second line
+
+>>>
+<pre><code>Codeblock on second line
+</code></pre>

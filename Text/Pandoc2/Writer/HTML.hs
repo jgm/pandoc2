@@ -64,7 +64,7 @@ blocksToHtml bs = foldM go mempty $ toItems bs
 blockToHtml :: Block -> W
 blockToHtml (Para ils) = H.p <$> inlinesToHtml ils
 blockToHtml (Plain ils) = inlinesToHtml ils
-blockToHtml (Quote bs) = H.blockquote <$> nl <> blocksToHtml bs
+blockToHtml (Quote bs) = H.blockquote <$> nl <> blocksToHtml bs <> nl
 blockToHtml (List style bs) =
   let items = F.foldMap (\b -> (H.li <$> blocksToHtml b) <> nl) bs
       addStart 1 t = t

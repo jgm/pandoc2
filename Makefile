@@ -10,15 +10,10 @@ prof:
 clean:
 	cabal clean
 
-test: markdowntests shelltests
-
-markdowntests:
-	cd Tests && \
-	OPTS="--strict --smart=no" perl MarkdownTest.pl --testdir=Markdown_1.0.3 -s ./markdown --tidy
-
-phptests:
-	cd Tests && \
-	OPTS="--strict --smart=no" perl MarkdownTest.pl --testdir=PHP_Markdown -s ./markdown  --tidy
+test: phptests shelltests
 
 shelltests:
-	perl shtest.pl -w "$(PANDOC2)" Tests
+	perl shtest.pl -w "$(PANDOC2)" Tests/Markdown_1.0.3 Tests/Pandoc
+
+phptests:
+	perl shtest.pl -w "$(PANDOC2)" Tests/PHP_Markdown
