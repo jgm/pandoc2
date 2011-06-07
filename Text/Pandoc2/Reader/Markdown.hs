@@ -663,6 +663,7 @@ pHtmlBlockRaw = try $ do
               <|> toksToVerbatim <$>
                     (many1 (satisfyTok notLt) <|> count 1 anyTok))
   case ts of
+       [] | tagname == "hr" -> return x  -- <hr>
        [TagClose s] | map toLower s == tagname -> return x
        _ -> do ws <- mconcat <$> many chunk
                w  <- {- pInColumn1 *> -} pTagClose tagname
@@ -672,7 +673,7 @@ pHtmlBlockRaw = try $ do
 blockTags :: [String]
 blockTags = [ "address", "blockquote", "center", "del", "dir", "div",
               "dl", "fieldset", "form", "ins", "h1", "h2", "h3",
-              "h4", "h5", "h6", "menu", "noframes", "noscript",
+              "h4", "h5", "h6", "hr", "menu", "noframes", "noscript",
               "ol", "p", "pre", "table", "ul", "dd", "dt",
               "frameset", "li", "tbody", "td", "tfoot", "th",
               "thead", "tr", "script" ]
