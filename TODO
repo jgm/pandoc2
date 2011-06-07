@@ -19,10 +19,10 @@ x tests for fenced code blocks
 x finish revising spacing etc. in tests
 
 x tests for math
+x command line flag --compact to disable extra spaces e.g. in html
+
 _ tests for super/subscript
 _ tests for HTML bolcks with markdown
-
-x command line flag --compact to disable extra spaces e.g. in html
 
 _ example lists - possibly rethink syntax to avoid clash w/ citations?
   (use ! instead of @)
