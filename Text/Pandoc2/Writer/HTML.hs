@@ -50,7 +50,7 @@ docToHtml opts bs =
                                             <> spacer)
                       return $ body <> spacer <> if null notes
                                                     then mempty
-                                                    else fnblock
+                                                    else fnblock <> spacer
 
 blocksToHtml :: Blocks -> W
 blocksToHtml bs = foldM go mempty $ toItems bs
