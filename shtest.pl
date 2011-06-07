@@ -15,7 +15,7 @@ getopts("cd:w:", \%options) or pod2usage(-verbose => 1) && exit;
 $cmdsub = $options{w} || undef;
 $colors = $options{c};
 $testdir = $options{d} || "tests";
-$pattern = join("|",@ARGV);
+@patterns = @ARGV;
 
 my $time_start = new Benchmark;
 
@@ -42,9 +42,11 @@ exit($failures);
 
 sub wanted {
   my $fn = $File::Find::name;
-  if ($fn =~ /\.test$/ && $fn =~ $pattern) {
-    push(@tests, $fn);
-  }
+  ($fn =~ /\.test$/) || return;
+  foreach (@patterns) {
+    ($fn =~ $_) || return;
+  };
+  push(@tests, $fn);
 }
 
 sub process {
@@ -134,7 +136,7 @@ The first line of the test is the command line.  Standard input
 follows a line containing '<<<', and expected output follows a line
 containing '>>>'.
 
-Only tests that match at least one of the (regex) patterns will be run.
+Only tests that match all of the (regex) patterns will be run.
 
 =head1 OPTIONS
 

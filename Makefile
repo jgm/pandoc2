@@ -10,10 +10,8 @@ prof:
 clean:
 	cabal clean
 
-test: phptests shelltests
-
-shelltests:
-	perl shtest.pl -c -w "$(PANDOC2)" Markdown_1.0.3 Pandoc
+test:
+	perl shtest.pl -c -w "$(PANDOC2)" 'Markdown_1.0.3|Pandoc'
 
 phptests:
 	perl shtest.pl -c -w "$(PANDOC2)" PHP_Markdown
