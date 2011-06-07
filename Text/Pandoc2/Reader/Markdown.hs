@@ -608,7 +608,7 @@ pHtmlInline = Const . rawInline (Format "html")
 
 pHtmlBlock :: PMonad m => MP m (PR Blocks)
 pHtmlBlock = Const . rawBlock (Format "html")
-          <$> (pHtmlComment <|> pHtmlBlockRaw)
+          <$> (pHtmlComment <|> (pInColumn1 *> pHtmlBlockRaw))
 
 pHtmlComment :: PMonad m => MP m Text
 pHtmlComment = try $ do
@@ -652,7 +652,6 @@ pTagClose tagname = try $ do
 
 pHtmlBlockRaw :: PMonad m => MP m Text
 pHtmlBlockRaw = try $ do
-  pInColumn1
   (t:ts, x) <- pHtmlTag
   guard $ isTagOpen t
   tagname <- case t of
@@ -665,7 +664,7 @@ pHtmlBlockRaw = try $ do
   case ts of
        [TagClose s] | map toLower s == tagname -> return x
        _ -> do ws <- mconcat <$> many chunk
-               w  <- pInColumn1 *> pTagClose tagname
+               w  <- {- pInColumn1 *> -} pTagClose tagname
                eol
                return $ x <> ws <> w
 
