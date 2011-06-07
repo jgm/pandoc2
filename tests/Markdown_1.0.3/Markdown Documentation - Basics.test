@@ -320,7 +320,7 @@ Output:
 
 <h2>Getting the Gist of Markdown&#39;s Formatting Syntax</h2>
 
-<p>This page offers a brief overview of what it&#39;s like to use Markdown.  The <a href="/projects/markdown/syntax" title="Markdown Syntax">syntax page</a> provides complete, detailed documentation for every feature, but Markdown should be very easy to pick up simply by looking at a few examples of it in action. The examples on this page are written in a before/after style, showing example syntax and the HTML output produced by Markdown.</p>
+<p>This page offers a brief overview of what it&#39;s like to use Markdown. The <a href="/projects/markdown/syntax" title="Markdown Syntax">syntax page</a> provides complete, detailed documentation for every feature, but Markdown should be very easy to pick up simply by looking at a few examples of it in action. The examples on this page are written in a before/after style, showing example syntax and the HTML output produced by Markdown.</p>
 
 <p>It&#39;s also helpful to simply try Markdown out; the <a href="/projects/markdown/dingus" title="Markdown Dingus">Dingus</a> is a web application that allows you type your own Markdown-formatted text and translate it to XHTML.</p>
 
@@ -330,7 +330,7 @@ Output:
 
 <p>A paragraph is simply one or more consecutive lines of text, separated by one or more blank lines. (A blank line is any line that looks like a blank line -- a line containing nothing spaces or tabs is considered blank.) Normal paragraphs should not be intended with spaces or tabs.</p>
 
-<p>Markdown offers two styles of headers: <em>Setext</em> and <em>atx</em>.  Setext-style headers for <code>&lt;h1&gt;</code> and <code>&lt;h2&gt;</code> are created by &quot;underlining&quot; with equal signs (<code>=</code>) and hyphens (<code>-</code>), respectively.  To create an atx-style header, you put 1-6 hash marks (<code>#</code>) at the beginning of the line -- the number of hashes equals the resulting HTML header level.</p>
+<p>Markdown offers two styles of headers: <em>Setext</em> and <em>atx</em>. Setext-style headers for <code>&lt;h1&gt;</code> and <code>&lt;h2&gt;</code> are created by &quot;underlining&quot; with equal signs (<code>=</code>) and hyphens (<code>-</code>), respectively. To create an atx-style header, you put 1-6 hash marks (<code>#</code>) at the beginning of the line -- the number of hashes equals the resulting HTML header level.</p>
 
 <p>Blockquotes are indicated using email-style &#39;<code>&gt;</code>&#39; angle brackets.</p>
 
@@ -474,7 +474,7 @@ Or, if you prefer, &lt;strong&gt;use two underscores instead&lt;/strong&gt;.&lt;
 
 <p>Markdown supports two styles for creating links: <em>inline</em> and <em>reference</em>. With both styles, you use square brackets to delimit the text you want to turn into a link.</p>
 
-<p>Inline-style links use parentheses immediately after the link text.  For example:</p>
+<p>Inline-style links use parentheses immediately after the link text. For example:</p>
 
 <pre><code>This is an [example link](http://example.com/).
 </code></pre>
