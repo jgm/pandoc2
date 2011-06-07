@@ -1,0 +1,19 @@
+pandoc2 --math-method=texmath
+<<<
+$e=mc^2$
+$$\alpha = \frac{\beta}{i^\pi}$$
+
+$$\phi_n(\kappa) =
+ \frac{1}{4\pi^2\kappa^2} \int_0^\infty
+ \frac{\sin(\kappa R)}{\kappa R}
+ \frac{\partial}{\partial R}
+ \left[R^2\frac{\partial D_n(R)}{\partial R}\right]\,dR$$
+
+>>>
+<p><span class="math">e=mc^2</span> <div class="math">\alpha = \frac{\beta}{i^\pi}</div></p>
+
+<p><div class="math">\phi_n(\kappa) =
+\frac{1}{4\pi^2\kappa^2} \int_0^\infty
+\frac{\sin(\kappa R)}{\kappa R}
+\frac{\partial}{\partial R}
+\left[R^2\frac{\partial D_n(R)}{\partial R}\right]\,dR</div></p>

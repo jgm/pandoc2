@@ -1,0 +1,19 @@
+pandoc2 --math-method=plainmath
+<<<
+$e=mc^2$
+$$\alpha = \frac{\beta}{i^\pi}$$
+
+$$\phi_n(\kappa) =
+ \frac{1}{4\pi^2\kappa^2} \int_0^\infty
+ \frac{\sin(\kappa R)}{\kappa R}
+ \frac{\partial}{\partial R}
+ \left[R^2\frac{\partial D_n(R)}{\partial R}\right]\,dR$$
+
+>>>
+<p><em>e</em> = <em>mc</em><sup>2</sup> <span class="math">$$\alpha = \frac{\beta}{i^\pi}$$</span></p>
+
+<p><span class="math">$$\phi_n(\kappa) =
+\frac{1}{4\pi^2\kappa^2} \int_0^\infty
+\frac{\sin(\kappa R)}{\kappa R}
+\frac{\partial}{\partial R}
+\left[R^2\frac{\partial D_n(R)}{\partial R}\right]\,dR$$</span></p>

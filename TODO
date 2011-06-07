@@ -18,7 +18,7 @@ x markdown strikeout
 x tests for fenced code blocks
 x finish revising spacing etc. in tests
 
-_ tests for math
+x tests for math
 _ tests for super/subscript
 _ tests for HTML bolcks with markdown
 
