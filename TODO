@@ -15,13 +15,14 @@ x plain math output
 
 x markdown parsing for super/subscript
 x markdown strikeout
+x tests for fenced code blocks
 
+_ finish revising spacing etc. in tests
 _ tests for math
 _ tests for super/subscript
-x tests for fenced code blocks
 _ tests for HTML bolcks with markdown
 
-_ command line flag to disable extra spaces e.g. in html
+_ command line flag --compact to disable extra spaces e.g. in html
 
 _ example lists - possibly rethink syntax to avoid clash w/ citations?
   (use ! instead of @)
