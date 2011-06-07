@@ -13,28 +13,31 @@ getopts("w:", \%options) or pod2usage(-verbose => 1) && exit;
 
 $cmdsub = $options{w} || undef;
 
-my @dirs = @ARGV;
-
-my @testfiles = `find "@dirs" -name '*.test'`;
 my $time_start = new Benchmark;
 
 my $failures = 0;
 my $passes   = 0;
 
-foreach (@testfiles) {
-  my $fn = $_;
-  my $result = runtest($fn);
-  my $ok = ($result =~ /^$/);
-  if ($ok) {
-    $passes += 1;
-    print colored ("[OK]     ", "yellow");
-    print $fn;
-  } else {
-    $failures += 1;
-    print colored ("[FAILED] ", "red");
-    print $fn;
-    print colored ($result, "cyan");
+foreach (@ARGV) {
+  my $dir = $_;
+  my @testfiles = `find "$dir" -name '*.test'`;
+
+  foreach (@testfiles) {
+    my $fn = $_;
+    my $result = runtest($fn);
+    my $ok = ($result =~ /^$/);
+    if ($ok) {
+      $passes += 1;
+      print colored ("[OK]     ", "yellow");
+      print $fn;
+    } else {
+      $failures += 1;
+      print colored ("[FAILED] ", "red");
+      print $fn;
+      print colored ($result, "cyan");
+    }
   }
+
 }
 
 my $time_end = new Benchmark;
@@ -81,7 +84,7 @@ sub runtest {
   }
   close $outstream;
 
-  my $diff = diff \$actual, \$expected;
+  my $diff = diff \$expected, \$actual;
 
   return $diff;
 }
