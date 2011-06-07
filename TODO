@@ -21,6 +21,8 @@ _ tests for super/subscript
 x tests for fenced code blocks
 _ tests for HTML bolcks with markdown
 
+_ command line flag to disable extra spaces e.g. in html
+
 _ example lists - possibly rethink syntax to avoid clash w/ citations?
   (use ! instead of @)
 
