@@ -122,11 +122,14 @@ orange
 <dl>
 <dt><em>apple</em></dt>
 <dd><p>red fruit</p>
+
 <p>contains seeds, crisp, pleasant to taste</p></dd>
 <dt><em>orange</em></dt>
 <dd><p>orange fruit</p>
+
 <pre><code>{ orange code block }
 </code></pre>
+
 <blockquote>
 <p>orange block quote</p>
 </blockquote></dd>
@@ -162,6 +165,7 @@ orange
 <dd><p>computer</p></dd>
 <dt>orange</dt>
 <dd><p>orange fruit</p>
+
 <ol type="1">
 <li>sublist</li>
 <li>sublist</li>
