@@ -16,8 +16,8 @@ x plain math output
 x markdown parsing for super/subscript
 x markdown strikeout
 x tests for fenced code blocks
+x finish revising spacing etc. in tests
 
-_ finish revising spacing etc. in tests
 _ tests for math
 _ tests for super/subscript
 _ tests for HTML bolcks with markdown
