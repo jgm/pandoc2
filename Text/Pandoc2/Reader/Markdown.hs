@@ -660,7 +660,8 @@ pHtmlBlockRaw = try $ do
   let notLt (SYM '<') = False
       notLt _         = True
   let chunk = notFollowedBy (pTagClose tagname) *> (pHtmlBlockRaw
-              <|> toksToText <$> (many1 (satisfyTok notLt) <|> count 1 anyTok))
+              <|> toksToVerbatim <$>
+                    (many1 (satisfyTok notLt) <|> count 1 anyTok))
   case ts of
        [TagClose s] | map toLower s == tagname -> return x
        _ -> do ws <- mconcat <$> many chunk
