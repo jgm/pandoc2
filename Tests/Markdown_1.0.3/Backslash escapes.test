@@ -144,7 +144,7 @@ This is a tag with backslashes <span attr='\\backslashes\\'>bar</span>.
 
 <p>Right paren: )</p>
 
-<p>Greater-than: ></p>
+<p>Greater-than: &gt;</p>
 
 <p>Hash: #</p>
 
@@ -225,7 +225,7 @@ Minus: \-
 
 <p>Minus: <code>\-</code></p>
 
-<p>These should get escaped, even though they're matching pairs for other Markdown constructs:</p>
+<p>These should get escaped, even though they&#39;re matching pairs for other Markdown constructs:</p>
 
 <p>*asterisks*</p>
 

@@ -1,6 +1,6 @@
 pandoc2 --strict
 <<<
-Here's a simple block:
+Here&#39;s a simple block:
 
 <div>
 	foo
@@ -49,7 +49,7 @@ Code:
 
 	<hr />
 	
-Hr's:
+Hr&#39;s:
 
 <hr>
 
@@ -71,7 +71,7 @@ Hr's:
 
 
 >>>
-<p>Here's a simple block:</p>
+<p>Here&#39;s a simple block:</p>
 
 <div>
     foo
@@ -124,7 +124,7 @@ Blah
 <pre><code>&lt;hr /&gt;
 </code></pre>
 
-<p>Hr's:</p>
+<p>Hr&#39;s:</p>
 
 <hr>
 
