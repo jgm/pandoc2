@@ -1,4 +1,5 @@
 .PHONY: all opt test clean prof all markdowntests phptests
+PANDOC2=$(shell pwd)/dist/build/pandoc2/pandoc2
 
 all:
 	cabal install
@@ -9,7 +10,7 @@ prof:
 clean:
 	cabal clean
 
-test: markdowntests pandoctests
+test: markdowntests shelltests
 
 markdowntests:
 	cd Tests && \
@@ -19,9 +20,5 @@ phptests:
 	cd Tests && \
 	OPTS="--strict --smart=no" perl MarkdownTest.pl --testdir=PHP_Markdown -s ./markdown  --tidy
 
-pandoctests:
-	cd Tests && \
-	OPTS="--smart=yes" perl MarkdownTest.pl --testdir=Pandoc -s ./markdown  --tidy
-
 shelltests:
-	shelltest --diff --color --with=dist/build/pandoc2/pandoc2 Tests
+	perl shtest.pl -w "$(PANDOC2)" Tests
