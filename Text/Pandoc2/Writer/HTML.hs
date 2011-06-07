@@ -57,7 +57,7 @@ blocksToHtml bs = foldM go mempty $ toItems bs
   where go a b = do x <- return a
                     y <- if isEmpty a then return mempty else nl
                     z <- blockToHtml b
-                    return $ x <> y <> z
+                    return $ x <> y <> y <> z
         isEmpty Empty = True
         isEmpty _     = False
 
