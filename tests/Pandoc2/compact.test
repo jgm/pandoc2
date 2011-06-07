@@ -1,0 +1,7 @@
+pandoc2 --compact
+<<<
+one paragraph.
+
+another paragraph.
+>>>
+<p>one paragraph.</p><p>another paragraph.</p>

@@ -33,7 +33,11 @@ instance Monoid W where
   mappend = liftM2 mappend
 
 nl :: W
-nl = return $ preEscapedText "\n"
+nl = do
+  opts <- wOptions <$> get
+  return $ if optCompact opts
+              then mempty
+              else preEscapedText "\n"
 
 docToHtml :: POptions -> Blocks -> Html
 docToHtml opts bs =
@@ -49,9 +53,9 @@ docToHtml opts bs =
                                                 (intersperse spacer notes)
                                             <> spacer)
                       return $ body <> if null notes
-                                          then spacer
-                                          else spacer <> spacer <>
-                                               fnblock <> spacer
+                                          then preEscapedText "\n"
+                                          else spacer <> spacer <> fnblock <>
+                                               preEscapedText "\n"
 
 blocksToHtml :: Blocks -> W
 blocksToHtml bs = foldM go mempty $ toItems bs

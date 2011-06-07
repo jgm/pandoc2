@@ -73,6 +73,7 @@ data POptions =
            , optExtensions :: PExtensions
            , optSmart      :: Bool   -- ^ Enable smart typography
            , optMathMethod :: HTMLMathMethod
+           , optCompact    :: Bool   -- ^ Avoid insignificant whitespace
            }
 
 -- | Default parser options.
@@ -82,6 +83,7 @@ poptions = POptions { optLogLevel   = WARNING
                     , optExtensions = noExtensions
                     , optSmart      = False
                     , optMathMethod = TeXMath
+                    , optCompact    = False
                     }
 
 -- | Concatenate and trim inlines.

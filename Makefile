@@ -11,7 +11,7 @@ clean:
 	cabal clean
 
 test:
-	perl shtest.pl -c -w "$(PANDOC2)" '^tests/(Markdown_1.0.3|Pandoc|math)'
+	perl shtest.pl -c -w "$(PANDOC2)" '^tests/(Markdown_1.0.3|Pandoc)'
 
 phptests:
 	perl shtest.pl -c -w "$(PANDOC2)" ^tests/PHP_Markdown

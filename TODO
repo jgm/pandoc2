@@ -22,7 +22,7 @@ x tests for math
 _ tests for super/subscript
 _ tests for HTML bolcks with markdown
 
-_ command line flag --compact to disable extra spaces e.g. in html
+x command line flag --compact to disable extra spaces e.g. in html
 
 _ example lists - possibly rethink syntax to avoid clash w/ citations?
   (use ! instead of @)

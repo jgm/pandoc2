@@ -24,6 +24,7 @@ main = do
                                   else setExtensions $ extension opts
                            , optSmart = smart opts
                            , optMathMethod = math_method opts
+                           , optCompact = compact opts
                            }
   let convert = markdownDoc poptions' . decodeUtf8
   let render = case map toLower (to opts) of
@@ -42,6 +43,7 @@ data Pandoc2 = Pandoc2
     , extension   :: [PExtension]
     , smart       :: Bool
     , math_method :: HTMLMathMethod
+    , compact     :: Bool
     , to          :: String
     , from        :: String
     }
@@ -61,6 +63,7 @@ opts = Pandoc2
                       typ "EXTENSION" &= help "Selectively enable syntax extension"
     , smart       = def &= help "Enable smart typography"
     , math_method = PlainMath &= typ "MATHMETHOD" &= help "How to display math in HTML"
+    , compact     = def &= help "Avoid insignificant whitespace in output."
     , tab_stop    = 4 &= groupname "Options" &= explicit &= name "tab-stop"
                       &= help "Tab stop"
     , files       = def &= args &= typ "FILE.."
