@@ -48,3 +48,5 @@ Library
 
 Executable pandoc2
   Main-Is:            pandoc2.hs
+  Ghc-Options:   -Wall -fno-warn-unused-do-bind
+  Ghc-Prof-Options: -auto-all -caf-all -rtsopts
