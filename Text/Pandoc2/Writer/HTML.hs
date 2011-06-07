@@ -48,9 +48,10 @@ docToHtml opts bs =
                                             <> mconcat
                                                 (intersperse spacer notes)
                                             <> spacer)
-                      return $ body <> spacer <> if null notes
-                                                    then mempty
-                                                    else fnblock <> spacer
+                      return $ body <> if null notes
+                                          then spacer
+                                          else spacer <> spacer <>
+                                               fnblock <> spacer
 
 blocksToHtml :: Blocks -> W
 blocksToHtml bs = foldM go mempty $ toItems bs
