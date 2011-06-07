@@ -39,6 +39,7 @@ data PExtension = Footnotes
                 | Intraword_underscores
                 | Blank_before_blockquote
                 | Blank_before_header
+                | Significant_bullets
                 deriving (Show, Read, Data, Typeable, Enum, Eq)
 
 newtype PExtensions = PExtensions { unPExtensions :: Integer }

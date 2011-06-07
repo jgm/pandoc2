@@ -391,7 +391,8 @@ pListItem :: PMonad m
 pListItem marker = try $ do
   n <- option 0 pNewlines
   m <- listStart
-  guard $ m `continues` marker
+  exts <- getOption optExtensions
+  guard $ continues exts m marker
   withBlockSep (indentSpace <|> eol) $
     withEndline (notFollowedBy $ sps *> listStart) $ do
       bs <- mconcat
@@ -409,12 +410,15 @@ data ListMarker = BulletMarker Char
                 | ExampleMarker Text ListNumberStyle ListNumberDelim
                 deriving Show
 
-continues :: ListMarker -> ListMarker -> Bool
-continues (BulletMarker c) (BulletMarker d) = c == d
-continues (NumberMarker (Just 1) s1 d1) (NumberMarker (Just 8) s2 d2)
+continues :: PExtensions -> ListMarker -> ListMarker -> Bool
+continues exts (BulletMarker c) (BulletMarker d) =
+  if isEnabled Significant_bullets exts
+     then c == d
+     else True
+continues _ (NumberMarker (Just 1) s1 d1) (NumberMarker (Just 8) s2 d2)
   | s1 == UpperRoman && s2 == UpperAlpha ||
     s1 == LowerRoman && s2 == LowerAlpha = d1 == d2 -- I continues H
-continues (NumberMarker (Just n1) s1 d1) (NumberMarker (Just n2) s2 d2)
+continues _ (NumberMarker (Just n1) s1 d1) (NumberMarker (Just n2) s2 d2)
   | (s2 == UpperRoman && s1 == UpperAlpha ||
      s2 == LowerRoman && s1 == LowerAlpha) &&
     (  (n1 == 22 && n2 == 4)  -- v continues 4
@@ -424,9 +428,9 @@ continues (NumberMarker (Just n1) s1 d1) (NumberMarker (Just n2) s2 d2)
     || (n1 == 4 && n2 == 499) -- d continues 499
     || (n1 == 12 && n2 == 999) -- m continues 999
     ) = d1 == d2
-continues (NumberMarker _ s1 d1) (NumberMarker _ s2 d2) = s1 == s2 && d1 == d2
-continues (ExampleMarker _ s1 d1) (ExampleMarker _ s2 d2) = s1 == s2 && d1 == d2
-continues _ _ = False
+continues _ (NumberMarker _ s1 d1) (NumberMarker _ s2 d2) = s1 == s2 && d1 == d2
+continues _ (ExampleMarker _ s1 d1) (ExampleMarker _ s2 d2) = s1 == s2 && d1 == d2
+continues _ _ _ = False
 
 listStart :: PMonad m => MP m ListMarker
 listStart = bullet <|> enum
