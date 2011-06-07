@@ -5,52 +5,28 @@ use Text::Diff;
 use Term::ANSIColor;
 use Getopt::Std;
 use Pod::Usage;
+use File::Find;
 use Benchmark;
 use warnings;
 
 my %options = ();
-getopts("cw:", \%options) or pod2usage(-verbose => 1) && exit;
+getopts("cd:w:", \%options) or pod2usage(-verbose => 1) && exit;
 
 $cmdsub = $options{w} || undef;
 $colors = $options{c};
+$testdir = $options{d} || "tests";
+$pattern = join("|",@ARGV);
 
 my $time_start = new Benchmark;
 
 my $failures = 0;
 my $passes   = 0;
 
-foreach (@ARGV) {
-  my $dir = $_;
-  my @testfiles = `find "$dir" -name '*.test'`;
+@tests = ();
+find(\&wanted, ($testdir));
 
-  foreach (@testfiles) {
-    my $fn = $_;
-    my $result = runtest($fn);
-    my $ok = ($result =~ /^$/);
-    if ($ok) {
-      $passes += 1;
-      if ($colors) {
-        print colored ("[OK]     ", "yellow");
-      } else {
-        print "[OK]     ";
-      }
-      print $fn;
-    } else {
-      $failures += 1;
-      if ($colors) {
-        print colored ("[FAILED] ", "red");
-      } else {
-        print "[FAILED] ";
-      }
-      print $fn;
-      if ($colors) {
-        print colored ($result, "cyan");
-      } else {
-        print $result;
-      }
-    }
-  }
-
+foreach (@tests) {
+  process($_);
 }
 
 my $time_end = new Benchmark;
@@ -64,9 +40,44 @@ exit($failures);
 
 # end of main program
 
+sub wanted {
+  my $fn = $File::Find::name;
+  if ($fn =~ /\.test$/ && $fn =~ $pattern) {
+    push(@tests, $fn);
+  }
+}
+
+sub process {
+    my $fn = $_;
+    my $result = runtest($fn);
+    my $ok = ($result =~ /^$/);
+    if ($ok) {
+      $passes += 1;
+      if ($colors) {
+        print colored ("[OK]     ", "yellow");
+      } else {
+        print "[OK]     ";
+      }
+      print $fn, "\n";
+    } else {
+      $failures += 1;
+      if ($colors) {
+        print colored ("[FAILED] ", "red");
+      } else {
+        print "[FAILED] ";
+      }
+      print $fn, "\n";
+      if ($colors) {
+        print colored ($result, "cyan");
+      } else {
+        print $result;
+      }
+    }
+}
+
 sub runtest {
-  my $fn = $_[0];
-  open(FILE, $fn) or die "Can't read file 'filename' [$fn]\n";
+  my $f = $_[0];
+  open(FILE, $f) or die "Can't read file '$f'\n";
 
   my $cmd = <FILE>;
   $cmd =~ s/[^ ]*/$cmdsub/ if defined $cmdsub;
@@ -113,10 +124,17 @@ B<shtest>
 
 =head1 SYNOPSIS
 
-B<shtest.pl> [ B<options> ]  [ I<directory> ... ]
+B<shtest.pl> [ B<options> ]  [ I<pattern> ... ]
 
 =head1 DESCRIPTION
 
+Runs tests in the 'tests' directory (or another directory specified
+using B<-d>).  Tests are contained in files with the '.test' extension.
+The first line of the test is the command line.  Standard input
+follows a line containing '<<<', and expected output follows a line
+containing '>>>'.
+
+Only tests that match at least one of the (regex) patterns will be run.
 
 =head1 OPTIONS
 
@@ -130,6 +148,10 @@ the command line specified in each test will be replaced by this path.
 =item B<-c>
 
 Use ANSI colors in output.
+
+=item B<-d>
+
+Specify directory containing tests (default = tests).
 
 =back
 
