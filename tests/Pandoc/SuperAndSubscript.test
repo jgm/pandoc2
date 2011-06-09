@@ -1,0 +1,14 @@
+pandoc2
+<<<
+Superscripts:  a^bc^d a^*hello*^ a^hello\ there^.
+
+Subscripts: H~2~O, H~23~O, H~many\ of\ them~O.
+
+These should not be superscripts or subscripts,
+because of the unescaped spaces:  a^b c^d, a~b c~d.
+>>>
+<p>Superscripts: a<sup>bc</sup>d a<sup><em>hello</em></sup> a<sup>hello there</sup>.</p>
+
+<p>Subscripts: H<sub>2</sub>O, H<sub>23</sub>O, H<sub>many of them</sub>O.</p>
+
+<p>These should not be superscripts or subscripts, because of the unescaped spaces: a^b c^d, a~b c~d.</p>
