@@ -62,10 +62,14 @@ pEscaped :: PMonad m => MP m (PR Inlines)
 pEscaped = try $ do
   sym '\\'
   exts <- getOption optExtensions
-  SYM c <- satisfyTok $ if isEnabled All_symbols_escapable exts
-                           then isSymTok
-                           else isEscapable
-  return $ Const $ ch c
+  x <- satisfyTok $ if isEnabled All_symbols_escapable exts
+                       then \t -> isSymTok t || t == SPACE || t == NEWLINE
+                       else isEscapable
+  return $ case x of
+                SYM c   -> Const $ ch c
+                SPACE   -> Const $ ch '\160'
+                NEWLINE -> Const lineBreak
+                _       -> error "Unexpected token in pEscaped"
 
 isEscapable :: Tok -> Bool
 isEscapable (SYM c) =
@@ -248,15 +252,18 @@ pStrong = strong <$$>
           ulEnd     = try (count 2 (sym '_'))
 
 pSuperscript :: PMonad m => MP m (PR Inlines)
-pSuperscript = superscript <$$> (pInlinesBetween superStart superEnd)
-  where superStart = try $ sym '^' <* lookAhead (satisfyTok notSpNlOrBracket)
-        notSpNlOrBracket t = t /= SPACE && t /= NEWLINE && t /= SYM '['
-        superEnd   = try $ sym '^' <* notFollowedBy (sym '[')
+pSuperscript = superscript <$$> (pNonspaceBetween superStart superEnd)
+  where superStart = try $ sym '^' <* notFollowedBy (sym '[')
+        superEnd   = sym '^'
 
 pSubscript :: PMonad m => MP m (PR Inlines)
-pSubscript = subscript <$$> (pInlinesBetween subStart subEnd)
-  where subStart = try $ sym '~' <* lookAhead (satisfyTok notSpNlOrTilde)
-        subEnd   = try $ sym '~' <* notFollowedBy (sym '~')
+pSubscript = subscript <$$> (pNonspaceBetween subStart subEnd)
+  where subStart = sym '~' <* notFollowedBy (sym '~')
+        subEnd   = sym '~' <* notFollowedBy (sym '~')
+
+pNonspaceBetween :: (Show b, PMonad m) => MP m a -> MP m b -> MP m (PR Inlines)
+pNonspaceBetween start end = mconcat <$> try (start *> many1Till inner end)
+  where inner      =  notFollowedBy' pSp *> pInline
 
 notSpNlOrTilde :: Tok -> Bool
 notSpNlOrTilde t = t /= SPACE && t /= NEWLINE && t /= SYM '~'
