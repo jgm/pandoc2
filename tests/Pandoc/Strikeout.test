@@ -1,0 +1,5 @@
+pandoc2
+<<<
+~~This is *strikeout*.~~
+>>>
+<p><del>This is <em>strikeout</em>.</del></p>
