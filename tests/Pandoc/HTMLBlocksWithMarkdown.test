@@ -1,0 +1,19 @@
+pandoc2
+<<<
+<table>
+<tr>
+<td>This is *emphasized*</td>
+<td>And this is **strong**</td>
+</tr>
+</table>
+
+<script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>
+>>>
+<table>
+<tr>
+<td>This is <em>emphasized</em></td>
+<td>And this is <strong>strong</strong></td>
+</tr>
+</table>
+
+<script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>
