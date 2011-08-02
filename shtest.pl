@@ -1,6 +1,7 @@
 #!/usr/bin/env perl -w
 
 use IPC::Open2;
+use HTML::Tidy;
 use Text::Diff;
 use Term::ANSIColor;
 use Getopt::Std;
@@ -10,12 +11,18 @@ use Benchmark;
 use warnings;
 
 my %options = ();
-getopts("cd:w:", \%options) or pod2usage(-verbose => 1) && exit;
+getopts("ctd:w:", \%options) or pod2usage(-verbose => 1) && exit;
 
 $cmdsub = $options{w} || undef;
 $colors = $options{c};
 $testdir = $options{d} || "tests";
+$usetidy = $options{t};
 @patterns = @ARGV;
+
+
+$tidy = HTML::Tidy->new( { output_xhtml => 1,
+                           tidy_mark => 0,
+                         } );
 
 my $time_start = new Benchmark;
 
@@ -110,6 +117,11 @@ sub runtest {
   }
   close $outstream;
 
+  if ($usetidy) {
+    $expected = $tidy->clean($expected);
+    $actual = $tidy->clean($actual);
+  }
+
   my $diff = diff \$expected, \$actual;
 
   return $diff;
@@ -150,6 +162,10 @@ the command line specified in each test will be replaced by this path.
 =item B<-c>
 
 Use ANSI colors in output.
+
+=item s<-c>
+
+Run output through tidy.
 
 =item B<-d>
 
