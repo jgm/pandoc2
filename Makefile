@@ -1,4 +1,4 @@
-.PHONY: all opt test clean prof all markdowntests phptests
+.PHONY: all opt test bench clean prof all markdowntests phptests
 PANDOC2=$(shell pwd)/dist/build/pandoc2/pandoc2
 
 all:
@@ -14,4 +14,8 @@ test:
 	lua shtest.lua -p "$(PANDOC2)" 'tests/Markdown_1.0.3' 'tests/Pandoc'
 
 phptests:
-	perl shtest.pl -c -w "$(PANDOC2)" ^tests/PHP_Markdown
+	lua shtest.lua -p "$(PANDOC2)" ^tests/PHP_Markdown
+
+bench:
+	time ${PANDOC2} benchtext.txt >/dev/null
+
