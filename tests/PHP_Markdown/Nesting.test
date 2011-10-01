@@ -1,4 +1,4 @@
-pandoc2 --strict
+lunamark
 <<<
 Valid nesting:
 

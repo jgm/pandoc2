@@ -1,4 +1,4 @@
-pandoc2 --strict
+lunamark
 <<<
 From `<!--` to `-->`
 on two lines.

@@ -1,6 +1,14 @@
-pandoc2 --strict
+lunamark
 <<<
-Tricky combinaisons:backslash with \\-- two dashesbackslash with \\> greater than\\\[test](not a link)\\\*no emphasis*
+Tricky combinaisons:
+
+backslash with \\-- two dashes
+
+backslash with \\> greater than
+
+\\[test](not a link)
+
+\\\*no emphasis*
 >>>
 <p>Tricky combinaisons:</p>
 
