@@ -156,7 +156,7 @@ if optarg.V then
 end
 
 local testdir = optarg.d or "tests"
-cmdname = optarg.p or "bin/lunamark"
+cmdname = optarg.p or "dist/build/pandoc2/pandoc2"
 testopts = optarg.o
 normalize = optarg.t
 
