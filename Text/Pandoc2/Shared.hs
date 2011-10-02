@@ -138,9 +138,6 @@ fromRoman t =
                       (c:_) | isLower c -> LowerRoman
                       _                 -> UpperRoman
            go :: String -> String -> Maybe Int
-           go _   (c:_) | not (c == 'M' || c == 'C' || c == 'D' ||
-                                     c == 'L' || c == 'X' || c == 'V' ||
-                                     c == 'I') = Nothing
            go "M" ('M':xs) = fmap (+ 1000) $ go "M" xs
            go "M" xs       = go "CM" xs
            go "CM" ('C':'M':xs) = fmap (+ 900) $ go "C" xs
