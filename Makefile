@@ -1,5 +1,6 @@
 .PHONY: all opt test bench clean prof all markdowntests phptests
 PANDOC2=$(shell pwd)/dist/build/pandoc2/pandoc2
+PROG?=${PANDOC2}
 
 all:
 	cabal install
@@ -17,5 +18,5 @@ phptests:
 	lua shtest.lua -p "$(PANDOC2)" ^tests/PHP_Markdown
 
 bench:
-	time ${PANDOC2} benchtext.txt >/dev/null
+	time ${PROG} benchtext.txt >/dev/null
 
