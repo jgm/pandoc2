@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving,
-    TypeSynonymInstances #-}
+    TypeSynonymInstances, FlexibleInstances #-}
 module Text.Pandoc2.Writer.HTML (docToHtml) where
 import Text.Pandoc2.Definition
 import Text.Pandoc2.Builder
