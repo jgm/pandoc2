@@ -137,7 +137,7 @@ fromRoman t =
            sty = case t' of
                       (c:_) | isLower c -> LowerRoman
                       _                 -> UpperRoman
-           go :: String -> String -> Maybe Int
+           go :: Text -> String -> Maybe Int
            go "M" ('M':xs) = fmap (+ 1000) $ go "M" xs
            go "M" xs       = go "CM" xs
            go "CM" ('C':'M':xs) = fmap (+ 900) $ go "C" xs
